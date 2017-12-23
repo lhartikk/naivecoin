@@ -5,6 +5,9 @@
   ],
   "jsRules": {},
   "rules": {
+    "no-bitwise": false,
+    "eofline": false,
+    "max-classes-per-file": [4],
     "prefer-for-of": false,
     "radix": false,
     "trailing-comma": false,
