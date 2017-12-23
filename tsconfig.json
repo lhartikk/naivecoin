@@ -6,7 +6,10 @@
   },
   "include": [
     "src/main.ts",
-    "src/block.ts"
+    "src/block.ts",
+    "src/p2p.ts",
+    "src/util.ts",
+    "src/transaction.ts"
   ],
   "exclude": [
     "node_modules"
