@@ -5,6 +5,7 @@
   ],
   "jsRules": {},
   "rules": {
+    "prefer-for-of": false,
     "radix": false,
     "trailing-comma": false,
     "object-literal-sort-keys": false,
