@@ -1,12 +1,6 @@
-#Naivecoin: chapter 2
-The branch for Naivecoin, chapter2
+#Naivecoin: chapter 3
+The branch for Naivecoin, chapter3
 
 ```npm install
 npm start```
 
-
-To mine a block with some data:
-
-```
-curl -H "Content-type: application/json" --data '{"data" : "tsers"}' localhost:3001/mineBlock
-```
