@@ -60,7 +60,7 @@ const initMessageHandler = (ws: WebSocket) => {
                 const receivedBlocks: Block[] = JSONToObject<Block[]>(message.data);
                 if (receivedBlocks === null) {
                     console.log('invalid blocks received:');
-                    console.log(message.data)
+                    console.log(message.data);
                     break;
                 }
                 handleBlockchainResponse(receivedBlocks);
