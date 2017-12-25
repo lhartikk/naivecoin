@@ -1,4 +1,4 @@
-#Naivecoin: chapter 3
+#Naivecoin: chapter 4
 The branch for Naivecoin, chapter3
 
 ```npm install
