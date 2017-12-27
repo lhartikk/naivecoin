@@ -1,5 +1,4 @@
 # Naivecoin
-The master branch of Naivecoin
 
 ```
 npm install
