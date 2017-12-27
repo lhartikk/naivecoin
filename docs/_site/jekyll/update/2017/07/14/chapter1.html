@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>#1: Minimal working blockchain</title>
+  <meta name="description" content="Overview The basic concept of blockchain is quite simple: a distributed database that maintains a continuously growing list of ordered records. In this chapt...">
+
+  <link rel="stylesheet" href="/assets/main.css">
+  <link rel="canonical" href="http://localhost:4000/jekyll/update/2017/07/14/chapter1.html">
+  <link rel="alternate" type="application/rss+xml" title="Naivecoin: a tutorial for building a cryptocurrency" href="/feed.xml">
+  
+  
+</head>
+
+
+  <body>
+
+    <header class="site-header" role="banner">
+
+  <div class="wrapper">
+    
+    
+    <a class="site-title" href="/">Naivecoin: a tutorial for building a cryptocurrency</a>
+  
+    
+      <nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+              <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+              <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger">
+          
+            
+            
+          
+            
+            
+            <a class="page-link" href="/about/">About</a>
+            
+          
+            
+            
+          
+            
+            
+          
+            
+            
+          
+        </div>
+      </nav>
+    
+  </div>
+</header>
+
+
+    <main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">#1: Minimal working blockchain</h1>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <h3 id="overview">Overview</h3>
+<p>The basic concept of blockchain is quite simple: a distributed database that maintains a continuously growing list of ordered records. In this chapter we will implement toy version of such blockchain. At the end of the chapter we will have the following basic functionalities of blockchain:</p>
+
+<ul>
+  <li>A defined block and blockchain structure</li>
+  <li>Methods to add new blocks to the blockchain with arbitrary data</li>
+  <li>Blockchain nodes that communicate and sync the blockchain with other nodes</li>
+  <li>A simple HTTP API to control the node</li>
+</ul>
+
+<p>The full code that will be implemented in this chapter can be found <a href="https://github.com/lhartikk/naivecoin/tree/chapter1">here</a>.</p>
+<h3 id="block-structure">Block structure</h3>
+
+<p>We will start by defining the block structure. Only the most essential properties are included at the block at this point.</p>
+
+<ul>
+  <li><strong>index</strong> : The height of the block in the blockchain</li>
+  <li><strong>data</strong>: Any data that is included in the block.</li>
+  <li><strong>timestamp</strong>: A timestamp</li>
+  <li><strong>hash</strong>: A sha256 hash taken from the content of the block</li>
+  <li><strong>previousHash</strong>: A reference to the hash of the previous block. This value explicitly defines the previous block.</li>
+</ul>
+
+<p><img src="http://localhost:4000/assets/blockchain.png" alt="Blockchain" /></p>
+
+<p>The code for the block structure looks like the following:</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">class</span> <span class="nx">Block</span> <span class="p">{</span>
+
+    <span class="kr">public</span> <span class="nx">index</span>: <span class="kt">number</span><span class="p">;</span>
+    <span class="kr">public</span> <span class="nx">hash</span>: <span class="kt">string</span><span class="p">;</span>
+    <span class="kr">public</span> <span class="nx">previousHash</span>: <span class="kt">string</span><span class="p">;</span>
+    <span class="kr">public</span> <span class="nx">timestamp</span>: <span class="kt">number</span><span class="p">;</span>
+    <span class="kr">public</span> <span class="nx">data</span>: <span class="kt">string</span><span class="p">;</span>
+
+    <span class="kr">constructor</span><span class="p">(</span><span class="nx">index</span>: <span class="kt">number</span><span class="p">,</span> <span class="nx">hash</span>: <span class="kt">string</span><span class="p">,</span> <span class="nx">previousHash</span>: <span class="kt">string</span><span class="p">,</span> <span class="nx">timestamp</span>: <span class="kt">number</span><span class="p">,</span> <span class="nx">data</span>: <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">this</span><span class="p">.</span><span class="nx">index</span> <span class="o">=</span> <span class="nx">index</span><span class="p">;</span>
+        <span class="k">this</span><span class="p">.</span><span class="nx">previousHash</span> <span class="o">=</span> <span class="nx">previousHash</span><span class="p">;</span>
+        <span class="k">this</span><span class="p">.</span><span class="nx">timestamp</span> <span class="o">=</span> <span class="nx">timestamp</span><span class="p">;</span>
+        <span class="k">this</span><span class="p">.</span><span class="nx">data</span> <span class="o">=</span> <span class="nx">data</span><span class="p">;</span>
+        <span class="k">this</span><span class="p">.</span><span class="nx">hash</span> <span class="o">=</span> <span class="nx">hash</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span></code></pre></figure>
+
+<h3 id="block-hash">Block hash</h3>
+<p>The block hash is one of the most important property of the block. The hash is calculated over all data of the block. This means that if anything in the block changes, the original hash is no longer valid. The block hash can also be tought as the unique identifier of the block. For instance, blocks with same index can appear, but they all have unique hashes.</p>
+
+<p>We calculate the hash of the block using the following code:</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">const</span> <span class="nx">calculateHash</span> <span class="o">=</span> <span class="p">(</span><span class="nx">index</span>: <span class="kt">number</span><span class="p">,</span> <span class="nx">previousHash</span>: <span class="kt">string</span><span class="p">,</span> <span class="nx">timestamp</span>: <span class="kt">number</span><span class="p">,</span> <span class="nx">data</span>: <span class="kt">string</span><span class="p">)</span><span class="o">:</span> <span class="kt">string</span> <span class="o">=&gt;</span>
+    <span class="nx">CryptoJS</span><span class="p">.</span><span class="nx">SHA256</span><span class="p">(</span><span class="nx">index</span> <span class="o">+</span> <span class="nx">previousHash</span> <span class="o">+</span> <span class="nx">timestamp</span> <span class="o">+</span> <span class="nx">data</span><span class="p">).</span><span class="nx">toString</span><span class="p">();</span></code></pre></figure>
+
+<p>It should be noted that the block hash has not yet nothing to do with <a href="https://en.bitcoin.it/wiki/Mining">mining</a>, as there is no <a href="https://en.wikipedia.org/wiki/Proof-of-work_system">proof-of-work</a> problem to solve. We use block hashes to preserve integrity of the block and to explicitly reference the previous block.</p>
+
+<p>An important consequence of the properties <code>hash</code> and <code>previousHash</code> is that a block can’t be modified without changing the hash of <em>every</em> consequentive block.</p>
+
+<p>This is demonstrated in the example below. If the data in block 44 is changed from “DESERT” to “STREET”, all hashes of the consequentive blocks must be changed. This is because the <code>hash</code> of the block depends on the value of the <code>previousHash</code> (among other things).</p>
+
+<p><img src="http://localhost:4000/assets/blockchain_integrity.png" alt="Blockchain integrity" /></p>
+
+<p>This is an especially important property when proof-of-work is introduced. The deeper the block is in the blockchain, the harder it is to modify it, since it would require modifications to every consequetive block.</p>
+
+<h3 id="genesis-block">Genesis block</h3>
+<p>Genesis block is the first block in the blockchain. It is the only block that has no <code>previousHash</code>. We will hard code the genesis block to the source code:</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">const</span> <span class="nx">genesisBlock</span>: <span class="kt">Block</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Block</span><span class="p">(</span>
+    <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;816534932c2b7154836da6afc367695e6337db8a921823784c14378abed4f7d7&#39;</span><span class="p">,</span> <span class="kc">null</span><span class="p">,</span> <span class="mi">1465154705</span><span class="p">,</span> <span class="s1">&#39;my genesis block!!&#39;</span>
+<span class="p">);</span></code></pre></figure>
+
+<h3 id="generating-a-block">Generating a block</h3>
+
+<p>To generate a block we must know the hash of the previous block and create the rest of the required content (= index, hash, data and timestamp). Block data is something that is provided by the end-user but the rest of the parameters will be generated using the following code:</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">const</span> <span class="nx">generateNextBlock</span> <span class="o">=</span> <span class="p">(</span><span class="nx">blockData</span>: <span class="kt">string</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">previousBlock</span>: <span class="kt">Block</span> <span class="o">=</span> <span class="nx">getLatestBlock</span><span class="p">();</span>
+    <span class="kr">const</span> <span class="nx">nextIndex</span>: <span class="kt">number</span> <span class="o">=</span> <span class="nx">previousBlock</span><span class="p">.</span><span class="nx">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="kr">const</span> <span class="nx">nextTimestamp</span>: <span class="kt">number</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Date</span><span class="p">().</span><span class="nx">getTime</span><span class="p">()</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">;</span>
+    <span class="kr">const</span> <span class="nx">nextHash</span>: <span class="kt">string</span> <span class="o">=</span> <span class="nx">calculateHash</span><span class="p">(</span><span class="nx">nextIndex</span><span class="p">,</span> <span class="nx">previousBlock</span><span class="p">.</span><span class="nx">hash</span><span class="p">,</span> <span class="nx">nextTimestamp</span><span class="p">,</span> <span class="nx">blockData</span><span class="p">);</span>
+    <span class="kr">const</span> <span class="nx">newBlock</span>: <span class="kt">Block</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Block</span><span class="p">(</span><span class="nx">nextIndex</span><span class="p">,</span> <span class="nx">nextHash</span><span class="p">,</span> <span class="nx">previousBlock</span><span class="p">.</span><span class="nx">hash</span><span class="p">,</span> <span class="nx">nextTimestamp</span><span class="p">,</span> <span class="nx">blockData</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nx">newBlock</span><span class="p">;</span>
+<span class="p">};</span></code></pre></figure>
+
+<h3 id="storing-the-blockchain">Storing the blockchain</h3>
+<p>For now we will only use an in-memory Javascript array to store the blockchain. This means that the data will not be persisted when the node is terminated.</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">const</span> <span class="nx">blockchain</span>: <span class="kt">Block</span><span class="p">[]</span> <span class="o">=</span> <span class="p">[</span><span class="nx">genesisBlock</span><span class="p">];</span></code></pre></figure>
+
+<h3 id="validating-the-integrity-of-blocks">Validating the integrity of blocks</h3>
+
+<p>At any given time we must be able to validate if a block or a chain of blocks are valid in terms of integrity. This is true especially when we receive new blocks from other nodes and must decide whether to accept them or not.</p>
+
+<p>For a block to be valid the following must apply:</p>
+<ul>
+  <li>The index of the block must be one number larger than the previous</li>
+  <li>The <code>previousHash</code> of the block match the <code>hash</code> of the previous block</li>
+  <li>The <code>hash</code> of the block itself must be valid</li>
+</ul>
+
+<p>This is demonstrated with the following code:</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">const</span> <span class="nx">isValidNewBlock</span> <span class="o">=</span> <span class="p">(</span><span class="nx">newBlock</span>: <span class="kt">Block</span><span class="p">,</span> <span class="nx">previousBlock</span>: <span class="kt">Block</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">previousBlock</span><span class="p">.</span><span class="nx">index</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">!==</span> <span class="nx">newBlock</span><span class="p">.</span><span class="nx">index</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;invalid index&#39;</span><span class="p">);</span>
+        <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">previousBlock</span><span class="p">.</span><span class="nx">hash</span> <span class="o">!==</span> <span class="nx">newBlock</span><span class="p">.</span><span class="nx">previousHash</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;invalid previoushash&#39;</span><span class="p">);</span>
+        <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">calculateHashForBlock</span><span class="p">(</span><span class="nx">newBlock</span><span class="p">)</span> <span class="o">!==</span> <span class="nx">newBlock</span><span class="p">.</span><span class="nx">hash</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="k">typeof</span> <span class="p">(</span><span class="nx">newBlock</span><span class="p">.</span><span class="nx">hash</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="k">typeof</span> <span class="nx">calculateHashForBlock</span><span class="p">(</span><span class="nx">newBlock</span><span class="p">));</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;invalid hash: &#39;</span> <span class="o">+</span> <span class="nx">calculateHashForBlock</span><span class="p">(</span><span class="nx">newBlock</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="nx">newBlock</span><span class="p">.</span><span class="nx">hash</span><span class="p">);</span>
+        <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
+<span class="p">};</span></code></pre></figure>
+
+<p>We must also validate the structure of the block, so that malformed content sent by a peer won’t crash our node.</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">const</span> <span class="nx">isValidBlockStructure</span> <span class="o">=</span> <span class="p">(</span><span class="nx">block</span>: <span class="kt">Block</span><span class="p">)</span><span class="o">:</span> <span class="kr">boolean</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="k">typeof</span> <span class="nx">block</span><span class="p">.</span><span class="nx">index</span> <span class="o">===</span> <span class="s1">&#39;number&#39;</span>
+        <span class="o">&amp;&amp;</span> <span class="k">typeof</span> <span class="nx">block</span><span class="p">.</span><span class="nx">hash</span> <span class="o">===</span> <span class="s1">&#39;string&#39;</span>
+        <span class="o">&amp;&amp;</span> <span class="k">typeof</span> <span class="nx">block</span><span class="p">.</span><span class="nx">previousHash</span> <span class="o">===</span> <span class="s1">&#39;string&#39;</span>
+        <span class="o">&amp;&amp;</span> <span class="k">typeof</span> <span class="nx">block</span><span class="p">.</span><span class="nx">timestamp</span> <span class="o">===</span> <span class="s1">&#39;number&#39;</span>
+        <span class="o">&amp;&amp;</span> <span class="k">typeof</span> <span class="nx">block</span><span class="p">.</span><span class="nx">data</span> <span class="o">===</span> <span class="s1">&#39;string&#39;</span><span class="p">;</span>
+<span class="p">};</span></code></pre></figure>
+
+<p>Now that we have a means to validate a single block we can move on to validate a full chain of blocks. We first check that the first block in the chain matches with the <code>genesisBlock</code>. After that we validate every consecutive block using the previously described methods. This is demostrated using the following code:</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">const</span> <span class="nx">isValidChain</span> <span class="o">=</span> <span class="p">(</span><span class="nx">blockchainToValidate</span>: <span class="kt">Block</span><span class="p">[])</span><span class="o">:</span> <span class="kr">boolean</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">isValidGenesis</span> <span class="o">=</span> <span class="p">(</span><span class="nx">block</span>: <span class="kt">Block</span><span class="p">)</span><span class="o">:</span> <span class="kr">boolean</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">block</span><span class="p">)</span> <span class="o">===</span> <span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">genesisBlock</span><span class="p">);</span>
+    <span class="p">};</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">isValidGenesis</span><span class="p">(</span><span class="nx">blockchainToValidate</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">blockchainToValidate</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">isValidNewBlock</span><span class="p">(</span><span class="nx">blockchainToValidate</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span> <span class="nx">blockchainToValidate</span><span class="p">[</span><span class="nx">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]))</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
+<span class="p">};</span></code></pre></figure>
+
+<h3 id="choosing-the-longest-chain">Choosing the longest chain</h3>
+
+<p>There should always be only one explicit set of blocks in the chain at a given time. In case of conflicts (e.g. two nodes both generate block number 72) we choose the chain that has the longest number of blocks. In the below example, the data introduced in block 72: a350235b00 will not be included in the blockchain, since it will be overridden by the longer chain.</p>
+
+<p><img src="http://localhost:4000/assets/conflict_resolving.png" alt="conflict resolving" /></p>
+
+<p>This is logic is implemented using the following code:</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">const</span> <span class="nx">replaceChain</span> <span class="o">=</span> <span class="p">(</span><span class="nx">newBlocks</span>: <span class="kt">Block</span><span class="p">[])</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">isValidChain</span><span class="p">(</span><span class="nx">newBlocks</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">newBlocks</span><span class="p">.</span><span class="nx">length</span> <span class="o">&gt;</span> <span class="nx">getBlockchain</span><span class="p">().</span><span class="nx">length</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;Received blockchain is valid. Replacing current blockchain with received blockchain&#39;</span><span class="p">);</span>
+        <span class="nx">blockchain</span> <span class="o">=</span> <span class="nx">newBlocks</span><span class="p">;</span>
+        <span class="nx">broadcastLatest</span><span class="p">();</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;Received blockchain invalid&#39;</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span></code></pre></figure>
+
+<h3 id="communicating-with-other-nodes">Communicating with other nodes</h3>
+
+<p>An essential part of a node is to share and sync the blockchain with other nodes. The following rules are used to keep the network in sync.</p>
+
+<ul>
+  <li>When a node generates a new block, it broadcasts it to the network</li>
+  <li>When a node connects to a new peer it querys for the latest block</li>
+  <li>When a node encounters a block that has an index larger than the current known block, it either adds the block the its current chain or querys for the full blockchain.</li>
+</ul>
+
+<p><img src="http://localhost:4000/assets/p2p_communication.png" alt="p2p communication" /></p>
+
+<p>We will use websockets for the peer-to-peer communication. The active sockets for each nodes are stored in the <code>const sockets: WebSocket[]</code> variable. No automatic peer discovery is used. The locations (= Websocket URLs) of the peers must be manually added.</p>
+
+<h3 id="controlling-the-node">Controlling the node</h3>
+
+<p>The user must be able to control the node in some way. This is done by setting up a HTTP server.</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">const</span> <span class="nx">initHttpServer</span> <span class="o">=</span> <span class="p">(</span> <span class="nx">myHttpPort</span>: <span class="kt">number</span> <span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">app</span> <span class="o">=</span> <span class="nx">express</span><span class="p">();</span>
+    <span class="nx">app</span><span class="p">.</span><span class="nx">use</span><span class="p">(</span><span class="nx">bodyParser</span><span class="p">.</span><span class="nx">json</span><span class="p">());</span>
+
+    <span class="nx">app</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">&#39;/blocks&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="nx">res</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nx">getBlockchain</span><span class="p">());</span>
+    <span class="p">});</span>
+    <span class="nx">app</span><span class="p">.</span><span class="nx">post</span><span class="p">(</span><span class="s1">&#39;/mineBlock&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="kr">const</span> <span class="nx">newBlock</span>: <span class="kt">Block</span> <span class="o">=</span> <span class="nx">generateNextBlock</span><span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span>
+        <span class="nx">res</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nx">newBlock</span><span class="p">);</span>
+    <span class="p">});</span>
+    <span class="nx">app</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">&#39;/peers&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="nx">res</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nx">getSockets</span><span class="p">().</span><span class="nx">map</span><span class="p">((</span> <span class="nx">s</span>: <span class="kt">any</span> <span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">s</span><span class="p">.</span><span class="nx">_socket</span><span class="p">.</span><span class="nx">remoteAddress</span> <span class="o">+</span> <span class="s1">&#39;:&#39;</span> <span class="o">+</span> <span class="nx">s</span><span class="p">.</span><span class="nx">_socket</span><span class="p">.</span><span class="nx">remotePort</span><span class="p">));</span>
+    <span class="p">});</span>
+    <span class="nx">app</span><span class="p">.</span><span class="nx">post</span><span class="p">(</span><span class="s1">&#39;/addPeer&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="nx">connectToPeers</span><span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">peer</span><span class="p">);</span>
+        <span class="nx">res</span><span class="p">.</span><span class="nx">send</span><span class="p">();</span>
+    <span class="p">});</span>
+
+    <span class="nx">app</span><span class="p">.</span><span class="nx">listen</span><span class="p">(</span><span class="nx">myHttpPort</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;Listening http on port: &#39;</span> <span class="o">+</span> <span class="nx">myHttpPort</span><span class="p">);</span>
+    <span class="p">});</span>
+<span class="p">};</span></code></pre></figure>
+
+<p>As seen, the user is able to interact with the node in the following ways:</p>
+<ul>
+  <li>List all blocks</li>
+  <li>Create a new block with a content given by the user</li>
+  <li>List or add peers</li>
+</ul>
+
+<p>The most straightforward way to control the node is e.g. with Curl:</p>
+
+<figure class="highlight"><pre><code class="language-bash" data-lang="bash"><span></span><span class="c1">#get all blocks from the node</span>
+&gt; curl http://localhost:3001/blocks</code></pre></figure>
+
+<h3 id="architecture">Architecture</h3>
+<p>It should be noted that the node actually exposes two web servers: One for the user to control the node (HTTP server) and one for the peer-to-peer communication between the nodes. (Websocket HTTP server)</p>
+
+<p><img src="http://localhost:4000/assets/naivechain_architecture.png" alt="naivechain_architecture.png" /></p>
+
+<h3 id="conclusions">Conclusions</h3>
+<p>Naivecoin is for now a just toy “general purpose” blockchain. Moreover, this chapter shows how some of the basic principles of blockchain can be implemented in quite a simple way. In the <a href="/jekyll/update/2017/07/13/chapter2.html">next chapter</a>, we will add the proof-of work algorithm (mining) to the naivecoin.</p>
+
+<p>The full final code for chapter1 cane found <a href="https://github.com/lhartikk/naivecoin/tree/chapter1">here</a>.</p>
+
+<p><a href="/jekyll/update/2017/07/13/chapter2.html">To chapter2</a></p>
+
+
+  </div>
+
+  
+</article>
+
+      </div>
+    </main>
+
+    <footer class="site-footer">
+
+
+</footer>
+
+
+  </body>
+
+</html>

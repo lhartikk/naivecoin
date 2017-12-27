@@ -1,0 +1,174 @@
+---
+layout: post
+title:  "#4: Wallet"
+categories: jekyll update
+---
+
+### Overview
+The goal of the wallet is to create a more abstract interface for the end user.
+
+The end user must be able to
+ * Create a new wallet (=private key in this case)
+ * View the balance of his wallet
+ * Send coins to other addresses
+
+All of the above must work so that the end user must not need to understand how txIns or txOuts work. Just like in e.g. Bitcoin: you send coins to addressess and publish your own address where other people can send coins.
+
+The full code that will be implemented in this chapter can be found [here][chapter4-code].
+
+### Generating and storing the private key
+In this tutorial we will use the simplest possible way to handle the wallet generation and storing: We will generate an unencrypted private key to the file `node/wallet/private_key`. 
+
+{% highlight ts %}
+const privateKeyLocation = 'node/wallet/private_key';
+
+const generatePrivatekey = (): string => {
+    const keyPair = EC.genKeyPair();
+    const privateKey = keyPair.getPrivate();
+    return privateKey.toString(16);
+};
+
+const initWallet = () => {
+    //let's not override existing private keys
+    if (existsSync(privateKeyLocation)) {
+        return;
+    }
+    const newPrivateKey = generatePrivatekey();
+
+    writeFileSync(privateKeyLocation, newPrivateKey);
+    console.log('new wallet with private key created');
+};
+
+{% endhighlight %}
+
+And as said, the public key (=address) can be calculated from the private key.
+
+{% highlight ts %}
+
+const getPublicFromWallet = (): string => {
+    const privateKey = getPrivateFromWallet();
+    const key = EC.keyFromPrivate(privateKey, 'hex');
+    return key.getPublic().encode('hex');
+};
+
+
+{% endhighlight %}
+It should be noted that storing the private key in an unencrypted format is very unsafe. We do this only for the purpose to keep things simple for now. Also, the wallet supports only a *single* private key, so you need to generate a new wallet to get a new public address.
+
+### Wallet balance
+A reminder from the previous chapter: when you own some coins in the blockchain, what you actually have is a list of unspent transaction outputs whose public key matches to the private key you own.
+
+This means that calculating the balance for a given address is quite simple: you just sum all the unspent transaction "owned" by that address:
+
+{% highlight ts %}
+const getBalance = (address: string, unspentTxOuts: UnspentTxOut[]): number => {
+    return _(unspentTxOuts)
+        .filter((uTxO: UnspentTxOut) => uTxO.address === address)
+        .map((uTxO: UnspentTxOut) => uTxO.amount)
+        .sum();
+};
+{% endhighlight %}
+
+As demonstrated in the code, the private key is not needed to query the balance of the address. This consequenctly means that anyone can solve the balance of a given address.
+
+### Generating transactions
+When sending coins, the user should be able to ignore the concepts of transaction inputs and outputs. But what should happen if the user A has balance of 50 coins, that is in a single transaction output and the user wants to send 10 coins to user B?
+
+In this case, the solution is to send 10 bitcoins to the address of user B and 40 coins **back** to user A. The full transaction output must always be spent, so the "splitting" part must be done when assigning the coins to new outputs. This simple case is demonstrated in the following out picture (txIns are not shown):
+
+![transaction_generation]({{ site.url }}/assets/tx_generation.png)
+
+Let's play out a bit more complex transaction scenario:
+1. User C has initally 0 coins
+2. User C receives 3 transactions worth of 10, 20 and 30 coins
+3. User C wants to send 55 coins to user D. What will the transaction look like? 
+
+In this case, all of the three outputs must be used and the outputs must have values of 55 coins to user D and 5 coins **back** to user C.
+
+![transaction_generation]({{ site.url }}/assets/tx_generation2.png)
+
+Let's manifest the described logic to code. First we will create the transaction inputs. To do this, we will loop through our unspent transaction outputs until the sum of these outputs is greater or equal than the amount we want to send.
+
+{% highlight ts %}
+const findTxOutsForAmount = (amount: number, myUnspentTxOuts: UnspentTxOut[]) => {
+    let currentAmount = 0;
+    const includedUnspentTxOuts = [];
+    for (const myUnspentTxOut of myUnspentTxOuts) {
+        includedUnspentTxOuts.push(myUnspentTxOut);
+        currentAmount = currentAmount + myUnspentTxOut.amount;
+        if (currentAmount >= amount) {
+            const leftOverAmount = currentAmount - amount;
+            return {includedUnspentTxOuts, leftOverAmount}
+        }
+    }
+    throw Error('not enough coins to send transaction');
+};
+
+{% endhighlight %}
+As shown, we will also calculate the `leftOverAmount` which is the value we will send **back** to our address. 
+
+As we have the list of unspent transaction outputs, we can create the txIns of the transaction:
+
+
+{% highlight ts %}
+const toUnsignedTxIn = (unspentTxOut: UnspentTxOut) => {
+    const txIn: TxIn = new TxIn();
+    txIn.txOutId = unspentTxOut.txOutId;
+    txIn.txOutIndex = unspentTxOut.txOutIndex;
+    return txIn;
+};
+const {includedUnspentTxOuts, leftOverAmount} = findTxOutsForAmount(amount, myUnspentTxouts);
+const unsignedTxIns: TxIn[] = includedUnspentTxOuts.map(toUnsignedTxIn);
+
+{% endhighlight %}
+
+Next the two txOuts of the transaction are created: One txOut for the receiver of the coins and one txOut for the leftOverAmount`. If the txIns happen to have the exact amount of the desired value (leftOverAmount is 0) we do not create the "leftOver" transaction.
+{% highlight ts %}
+const createTxOuts = (receiverAddress:string, myAddress:string, amount, leftOverAmount: number) => {
+    const txOut1: TxOut = new TxOut(receiverAddress, amount);
+    if (leftOverAmount === 0) {
+        return [txOut1]
+    } else {
+        const leftOverTx = new TxOut(myAddress, leftOverAmount);
+        return [txOut1, leftOverTx];
+    }
+};
+
+{% endhighlight %}
+
+Finally we calculate the transaction id and sign the txIns:
+{% highlight ts %}
+    const tx: Transaction = new Transaction();
+    tx.txIns = unsignedTxIns;
+    tx.txOuts = createTxOuts(receiverAddress, myAddress, amount, leftOverAmount);
+    tx.id = getTransactionId(tx);
+
+    tx.txIns = tx.txIns.map((txIn: TxIn, index: number) => {
+        txIn.signature = signTxIn(tx, index, privateKey, unspentTxOuts);
+        return txIn;
+    });
+{% endhighlight %}
+
+### Using the wallet
+Let's also add a meaningful controlling endpoint to for the wallet functionality.
+{% highlight ts %}
+    app.post('/mineTransaction', (req, res) => {
+        const address = req.body.address;
+        const amount = req.body.amount;
+        const resp = generatenextBlockWithTransaction(address, amount);
+        res.send(resp);
+    });
+{% endhighlight %}  
+As it is shown, the end user must only provide the address and the amount of coins for the node. The node will calculate the rest.
+
+### Conclusions
+We just implemented a naive unencrypted wallet with simple transaction generation. Although this transaction generation algorithm never creates transactions with more than 2 outputs, it should be noted that the blockchain itself supports any number of outputs. You *could* create valid a transaction with input of 50 coins and output of 5,15 and 30 coins, but those must be created manually using the `/mineRawBlock` interface.
+
+Also, the only way to include a desired transaction in the blockchain is to mine it yourself. The nodes do not exchange information about transactions that are not yet included in the blockchain. This will be addressed in the [next chapter][chapter5].
+
+The code implemented in this chapter can be found [here][chapter4-code].
+
+[To chapter5][chapter5]
+
+[chapter4-code]: https://github.com/lhartikk/naivecoin/tree/chapter4
+[chapter5]: {{ site.baseurl }} {% post_url 2017-07-10-chapter5 %}

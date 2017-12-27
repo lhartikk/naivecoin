@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>#3: Transactions</title>
+  <meta name="description" content="Overview In this chapter we will introduce the concept of transactions. With this modification, we actually shift from our project from a “general purpose” b...">
+
+  <link rel="stylesheet" href="/assets/main.css">
+  <link rel="canonical" href="http://localhost:4000/jekyll/update/2017/07/12/chapter3.html">
+  <link rel="alternate" type="application/rss+xml" title="Naivecoin: a tutorial for building a cryptocurrency" href="/feed.xml">
+  
+  
+</head>
+
+
+  <body>
+
+    <header class="site-header" role="banner">
+
+  <div class="wrapper">
+    
+    
+    <a class="site-title" href="/">Naivecoin: a tutorial for building a cryptocurrency</a>
+  
+    
+      <nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+              <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+              <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger">
+          
+            
+            
+          
+            
+            
+            <a class="page-link" href="/about/">About</a>
+            
+          
+            
+            
+          
+            
+            
+          
+            
+            
+          
+        </div>
+      </nav>
+    
+  </div>
+</header>
+
+
+    <main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">#3: Transactions</h1>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <h3 id="overview">Overview</h3>
+<p>In this chapter we will introduce the concept of transactions. With this modification, we actually shift from our project from a “general purpose” blockchain to a cryptocurrency. As a result, we can send coins to addresses if we can show a proof that we own them in the first place.</p>
+
+<p>To enable all this, a lot of new concepts must presented. This includes public-key cryptography, signatures and  transactions inputs and outputs.</p>
+
+<p>The full code that will be implemented in this chapter can be found <a href="https://github.com/lhartikk/naivecoin/tree/chapter3">here</a>.</p>
+
+<h3 id="public-key-cryptography-and-signatures">Public-key cryptography and signatures</h3>
+<p>In <a href="https://en.wikipedia.org/wiki/Public-key_cryptography">Public-key cryptography</a> you have a keypair: a secret key and a public key. The public key can be derived from the secret key, but the secret key cannot be derived from the public key. The public key (as the name implies) can be shared safely to anyone.</p>
+
+<p>Any messages can be signed using the private key to create a <em>signature</em>. With this signature and the corresponding public key, anyone can verify that the signature is produced by the private key the that matches the public key.</p>
+
+<p><img src="http://localhost:4000/assets/Digital_signatures.png" alt="Digital signatures" /></p>
+
+<p>We will use a library called <a href="https://github.com/indutny/elliptic">elliptic</a> for the public-key cryptography, which uses elliptic curves. (= <a href="https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm">ECDSA</a>)</p>
+
+<p>Conclusively, two different cryptographic funtions are used for different purposes in the cryptocurrency:</p>
+<ul>
+  <li>Hash function (SHA256) for the Proof-of-work mining (The hash is also used to preserve block integrity)</li>
+  <li>Public-key cryptography (ECDSA) for transactions (we’ll be implementing in this chapter )</li>
+</ul>
+
+<h3 id="private-keys-and-public-keys-in-ecdsa">Private-keys and public keys (in ECDSA)</h3>
+<p>A valid private key is any random 32 byte string, eg. <code>19f128debc1b9122da0635954488b208b829879cf13b3d6cac5d1260c0fd967c</code></p>
+
+<p>A valid public key is ‘04’ concatenated with a  64 byte string, e.g  <code>04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a</code></p>
+
+<p>The public key can be derived from the private key. The public-key will be used as the ‘reveicer’ (= address) of the coins in a transaction.</p>
+
+<h3 id="transactions-overview">Transactions overview</h3>
+<p>Before writing any code, let’s get an overview about the structure of transactions. Transactions consists of two components: <em>inputs</em> and <em>outputs</em>. Outputs specify where the coins are sent and inputs give a proof that the coins that are actually sent exists in the first place and are owned by the “sender”. Inputs always refer to an existing (unspent) output.</p>
+
+<p><img src="http://localhost:4000/assets/transactions.png" alt="Digital signatures" /></p>
+
+<h3 id="transaction-outputs">Transaction outputs</h3>
+<p>Transaction outputs (txOut) consists of an address and an amount of coins. The address is an ECDSA public-key. This means that the user having the private-key of the referenced public-key (=address) will be able to access the coins.</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">class</span> <span class="nx">TxOut</span> <span class="p">{</span>
+    <span class="kr">public</span> <span class="nx">address</span>: <span class="kt">string</span><span class="p">;</span>
+    <span class="kr">public</span> <span class="nx">amount</span>: <span class="kt">number</span><span class="p">;</span>
+
+    <span class="kr">constructor</span><span class="p">(</span><span class="nx">address</span>: <span class="kt">string</span><span class="p">,</span> <span class="nx">amount</span>: <span class="kt">number</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">this</span><span class="p">.</span><span class="nx">address</span> <span class="o">=</span> <span class="nx">address</span><span class="p">;</span>
+        <span class="k">this</span><span class="p">.</span><span class="nx">amount</span> <span class="o">=</span> <span class="nx">amount</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span></code></pre></figure>
+
+<h3 id="transaction-inputs">Transaction inputs</h3>
+
+<p>Transacation inputs (txIn) provide the information “where” the coins are coming from. Each txIn refer to an earlier output, from which the coins are ‘unlocked’, with the signature. These unlocked coins are now ‘available’ for the txOuts. The signature gives proof that only the user, that has the private-key of the referred public-key ( =address) could have created the transaction.</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">class</span> <span class="nx">TxIn</span> <span class="p">{</span>
+    <span class="kr">public</span> <span class="nx">txOutId</span>: <span class="kt">string</span><span class="p">;</span>
+    <span class="kr">public</span> <span class="nx">txOutIndex</span>: <span class="kt">number</span><span class="p">;</span>
+    <span class="kr">public</span> <span class="nx">signature</span>: <span class="kt">string</span><span class="p">;</span>
+<span class="p">}</span></code></pre></figure>
+
+<p>It should be noted that the txIn contains only the signature (created by the private-key), never the private-key itself. The blockchain contains public-keys and signatures, never private-keys.</p>
+
+<p>As a conclusion, it can also be thought that the txIns unlock the coins and the txOuts ‘relock’ the coins:
+<img src="http://localhost:4000/assets/transactions2.png" alt="Transactions2" /></p>
+
+<h3 id="transaction-structure">Transaction structure</h3>
+
+<p>The transactions structure itself is quite simple as we have now defined txIns and txOuts.</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">class</span> <span class="nx">Transaction</span> <span class="p">{</span>
+    <span class="kr">public</span> <span class="nx">id</span>: <span class="kt">string</span><span class="p">;</span>
+    <span class="kr">public</span> <span class="nx">txIns</span>: <span class="kt">TxIn</span><span class="p">[];</span>
+    <span class="kr">public</span> <span class="nx">txOuts</span>: <span class="kt">TxOut</span><span class="p">[];</span>
+<span class="p">}</span></code></pre></figure>
+
+<h3 id="transaction-id">Transaction id</h3>
+<p>The transaction id is calculated by taking a hash from the contents of the transaction. However, the signatures of the txIds are <strong>not</strong> included in the transaction hash as the will be added later on to the transaction.</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">const</span> <span class="nx">getTransactionId</span> <span class="o">=</span> <span class="p">(</span><span class="nx">transaction</span>: <span class="kt">Transaction</span><span class="p">)</span><span class="o">:</span> <span class="kt">string</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">txInContent</span>: <span class="kt">string</span> <span class="o">=</span> <span class="nx">transaction</span><span class="p">.</span><span class="nx">txIns</span>
+        <span class="p">.</span><span class="nx">map</span><span class="p">((</span><span class="nx">txIn</span>: <span class="kt">TxIn</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">txIn</span><span class="p">.</span><span class="nx">txOutId</span> <span class="o">+</span> <span class="nx">txIn</span><span class="p">.</span><span class="nx">txOutIndex</span><span class="p">)</span>
+        <span class="p">.</span><span class="nx">reduce</span><span class="p">((</span><span class="nx">a</span><span class="p">,</span> <span class="nx">b</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">a</span> <span class="o">+</span> <span class="nx">b</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">);</span>
+
+    <span class="kr">const</span> <span class="nx">txOutContent</span>: <span class="kt">string</span> <span class="o">=</span> <span class="nx">transaction</span><span class="p">.</span><span class="nx">txOuts</span>
+        <span class="p">.</span><span class="nx">map</span><span class="p">((</span><span class="nx">txOut</span>: <span class="kt">TxOut</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">txOut</span><span class="p">.</span><span class="nx">address</span> <span class="o">+</span> <span class="nx">txOut</span><span class="p">.</span><span class="nx">amount</span><span class="p">)</span>
+        <span class="p">.</span><span class="nx">reduce</span><span class="p">((</span><span class="nx">a</span><span class="p">,</span> <span class="nx">b</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">a</span> <span class="o">+</span> <span class="nx">b</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="nx">CryptoJS</span><span class="p">.</span><span class="nx">SHA256</span><span class="p">(</span><span class="nx">txInContent</span> <span class="o">+</span> <span class="nx">txOutContent</span><span class="p">).</span><span class="nx">toString</span><span class="p">();</span>
+<span class="p">};</span></code></pre></figure>
+
+<h3 id="transaction-signatures">Transaction signatures</h3>
+<p>It is important that the contents of the transaction cannot be altered, after it has been signed. As the transactions are public, anyone can access to the transactions, even before they are included in the blockchain.</p>
+
+<p>When signing the transaction inputs, only the txId will be signed. If any of the contents in the transactions is modified, the txId must change, making the transaction and signature invalid.</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">const</span> <span class="nx">signTxIn</span> <span class="o">=</span> <span class="p">(</span><span class="nx">transaction</span>: <span class="kt">Transaction</span><span class="p">,</span> <span class="nx">txInIndex</span>: <span class="kt">number</span><span class="p">,</span>
+                  <span class="nx">privateKey</span>: <span class="kt">string</span><span class="p">,</span> <span class="nx">aUnspentTxOuts</span>: <span class="kt">UnspentTxOut</span><span class="p">[])</span><span class="o">:</span> <span class="kt">string</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">txIn</span>: <span class="kt">TxIn</span> <span class="o">=</span> <span class="nx">transaction</span><span class="p">.</span><span class="nx">txIns</span><span class="p">[</span><span class="nx">txInIndex</span><span class="p">];</span>
+    <span class="kr">const</span> <span class="nx">dataToSign</span> <span class="o">=</span> <span class="nx">transaction</span><span class="p">.</span><span class="nx">id</span><span class="p">;</span>
+    <span class="kr">const</span> <span class="nx">referencedUnspentTxOut</span>: <span class="kt">UnspentTxOut</span> <span class="o">=</span> <span class="nx">findUnspentTxOut</span><span class="p">(</span><span class="nx">txIn</span><span class="p">.</span><span class="nx">txOutId</span><span class="p">,</span> <span class="nx">txIn</span><span class="p">.</span><span class="nx">txOutIndex</span><span class="p">,</span> <span class="nx">aUnspentTxOuts</span><span class="p">);</span>
+    <span class="kr">const</span> <span class="nx">referencedAddress</span> <span class="o">=</span> <span class="nx">referencedUnspentTxOut</span><span class="p">.</span><span class="nx">address</span><span class="p">;</span>
+    <span class="kr">const</span> <span class="nx">key</span> <span class="o">=</span> <span class="nx">ec</span><span class="p">.</span><span class="nx">keyFromPrivate</span><span class="p">(</span><span class="nx">privateKey</span><span class="p">,</span> <span class="s1">&#39;hex&#39;</span><span class="p">);</span>
+    <span class="kr">const</span> <span class="nx">signature</span>: <span class="kt">string</span> <span class="o">=</span> <span class="nx">toHexString</span><span class="p">(</span><span class="nx">key</span><span class="p">.</span><span class="nx">sign</span><span class="p">(</span><span class="nx">dataToSign</span><span class="p">).</span><span class="nx">toDER</span><span class="p">());</span>
+    <span class="k">return</span> <span class="nx">signature</span><span class="p">;</span>
+<span class="p">};</span></code></pre></figure>
+
+<p>Let’s try to understand what happens if someone tries to modify the transaction:</p>
+<ol>
+  <li>Attacker runs a node and receives a transaction with content: “send 10 coins from address <code>AAA</code> to <code>BBB</code>” with txId <code>0x555..</code></li>
+  <li>The attacker changes the receiver address to <code>CCC</code> and relays it forward in the network. Now the content of the transaction is “send 10 coins from address <code>AAA</code> to <code>CCC</code>”</li>
+  <li>However, as the receiver address is changed, the txId is not valid anymore. A new valid txId would be <code>0x567...</code></li>
+  <li>If the txId is set to the new value, the signature is not valid. The signature matches only with the original txId <code>0x555..</code></li>
+  <li>The modified transaction will not be accepted by other nodes, since either way, it is invalid.</li>
+</ol>
+
+<h3 id="unspent-transaction-outputs">Unspent transaction outputs</h3>
+<p>A transaction input must always refer to an unspent transaction output (uTxO). Consequently, when you own some coins in the blockchain, what you actually have is a list of unspent transaction outputs whose public key matches to the private key you own.</p>
+
+<p>In terms of transactions validation, we can only focus on the list of unspent transactions outputs, in order to figure out if the transaction is valid. The list of unspent transaction outputs can always be derived from the current blockchain. In this implementation, we will update the list of unspent transaction outputs as we process and include the transactions to the blockchain.</p>
+
+<p>The data structure for an unspent transaction output looks like this:</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">class</span> <span class="nx">UnspentTxOut</span> <span class="p">{</span>
+    <span class="kr">public</span> <span class="nx">readonly</span> <span class="nx">txOutId</span>: <span class="kt">string</span><span class="p">;</span>
+    <span class="kr">public</span> <span class="nx">readonly</span> <span class="nx">txOutIndex</span>: <span class="kt">number</span><span class="p">;</span>
+    <span class="kr">public</span> <span class="nx">readonly</span> <span class="nx">address</span>: <span class="kt">string</span><span class="p">;</span>
+    <span class="kr">public</span> <span class="nx">readonly</span> <span class="nx">amount</span>: <span class="kt">number</span><span class="p">;</span>
+
+    <span class="kr">constructor</span><span class="p">(</span><span class="nx">txOutId</span>: <span class="kt">string</span><span class="p">,</span> <span class="nx">txOutIndex</span>: <span class="kt">number</span><span class="p">,</span> <span class="nx">address</span>: <span class="kt">string</span><span class="p">,</span> <span class="nx">amount</span>: <span class="kt">number</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">this</span><span class="p">.</span><span class="nx">txOutId</span> <span class="o">=</span> <span class="nx">txOutId</span><span class="p">;</span>
+        <span class="k">this</span><span class="p">.</span><span class="nx">txOutIndex</span> <span class="o">=</span> <span class="nx">txOutIndex</span><span class="p">;</span>
+        <span class="k">this</span><span class="p">.</span><span class="nx">address</span> <span class="o">=</span> <span class="nx">address</span><span class="p">;</span>
+        <span class="k">this</span><span class="p">.</span><span class="nx">amount</span> <span class="o">=</span> <span class="nx">amount</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span></code></pre></figure>
+
+<p>The data structure itself if just a list:</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kd">let</span> <span class="nx">unspentTxOuts</span>: <span class="kt">UnspentTxOut</span><span class="p">[]</span> <span class="o">=</span> <span class="p">[];</span></code></pre></figure>
+
+<h3 id="updating-unspent-transaction-outputs">Updating unspent transaction outputs</h3>
+<p>Every time a new block is added to the chain, we must update our list of unspent transaction ouputs. This is because the new transactions will spend some of the existing transaction outputs and introduce new unspent outputs.</p>
+
+<p>To handle this, we will first retrieve all new unspent transaction outputs (<code>newUnspentTxOuts</code>) from the new block:</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span>    <span class="kr">const</span> <span class="nx">newUnspentTxOuts</span>: <span class="kt">UnspentTxOut</span><span class="p">[]</span> <span class="o">=</span> <span class="nx">newTransactions</span>
+        <span class="p">.</span><span class="nx">map</span><span class="p">((</span><span class="nx">t</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nx">t</span><span class="p">.</span><span class="nx">txOuts</span><span class="p">.</span><span class="nx">map</span><span class="p">((</span><span class="nx">txOut</span><span class="p">,</span> <span class="nx">index</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="k">new</span> <span class="nx">UnspentTxOut</span><span class="p">(</span><span class="nx">t</span><span class="p">.</span><span class="nx">id</span><span class="p">,</span> <span class="nx">index</span><span class="p">,</span> <span class="nx">txOut</span><span class="p">.</span><span class="nx">address</span><span class="p">,</span> <span class="nx">txOut</span><span class="p">.</span><span class="nx">amount</span><span class="p">));</span>
+        <span class="p">})</span>
+        <span class="p">.</span><span class="nx">reduce</span><span class="p">((</span><span class="nx">a</span><span class="p">,</span> <span class="nx">b</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">a</span><span class="p">.</span><span class="nx">concat</span><span class="p">(</span><span class="nx">b</span><span class="p">),</span> <span class="p">[]);</span></code></pre></figure>
+
+<p>We will also need to know which transaction outputs are consumend by the new transactions of the block (<code>consumedTxOuts</code>). This will be solved by examining the inputs of the new transactions:</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span>    <span class="kr">const</span> <span class="nx">consumedTxOuts</span>: <span class="kt">UnspentTxOut</span><span class="p">[]</span> <span class="o">=</span> <span class="nx">newTransactions</span>
+        <span class="p">.</span><span class="nx">map</span><span class="p">((</span><span class="nx">t</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">t</span><span class="p">.</span><span class="nx">txIns</span><span class="p">)</span>
+        <span class="p">.</span><span class="nx">reduce</span><span class="p">((</span><span class="nx">a</span><span class="p">,</span> <span class="nx">b</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">a</span><span class="p">.</span><span class="nx">concat</span><span class="p">(</span><span class="nx">b</span><span class="p">),</span> <span class="p">[])</span>
+        <span class="p">.</span><span class="nx">map</span><span class="p">((</span><span class="nx">txIn</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="k">new</span> <span class="nx">UnspentTxOut</span><span class="p">(</span><span class="nx">txIn</span><span class="p">.</span><span class="nx">txOutId</span><span class="p">,</span> <span class="nx">txIn</span><span class="p">.</span><span class="nx">txOutIndex</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">));</span></code></pre></figure>
+
+<p>Finally, we can generate the new unspent transaction outputs by <strong>removing</strong> the <code>consumedTxOuts</code> and <strong>adding</strong> the <code>newUnspentTxOuts</code> to our existing transaction outputs.</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span>    <span class="kr">const</span> <span class="nx">resultingUnspentTxOuts</span> <span class="o">=</span> <span class="nx">aUnspentTxOuts</span>
+        <span class="p">.</span><span class="nx">filter</span><span class="p">(((</span><span class="nx">uTxO</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="o">!</span><span class="nx">findUnspentTxOut</span><span class="p">(</span><span class="nx">uTxO</span><span class="p">.</span><span class="nx">txOutId</span><span class="p">,</span> <span class="nx">uTxO</span><span class="p">.</span><span class="nx">txOutIndex</span><span class="p">,</span> <span class="nx">consumedTxOuts</span><span class="p">)))</span>
+        <span class="p">.</span><span class="nx">concat</span><span class="p">(</span><span class="nx">newUnspentTxOuts</span><span class="p">);</span></code></pre></figure>
+
+<p>The described code and functionality is contained in the <code>updateUnspentTxOuts</code> method. It should be noted that this method is called only <strong>after</strong> the transactions in the block (and the block itself) has been validated.</p>
+
+<h3 id="transactions-validation">Transactions validation</h3>
+<p>We can now finally lay out the rules what makes a transaction valid:</p>
+
+<h4 id="correct-transaction-structure">Correct transaction structure</h4>
+<p>The transaction must conform with the defined classes of <code>Transaction</code>, <code>TxIn</code> and <code>TxOut</code></p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span>    <span class="kr">const</span> <span class="nx">isValidTransactionStructure</span> <span class="o">=</span> <span class="p">(</span><span class="nx">transaction</span>: <span class="kt">Transaction</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">transaction</span><span class="p">.</span><span class="nx">id</span> <span class="o">!==</span> <span class="s1">&#39;string&#39;</span><span class="p">)</span> <span class="p">{</span>
+            <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;transactionId missing&#39;</span><span class="p">);</span>
+            <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="p">...</span>
+       <span class="c1">//check also the other members of class</span>
+    <span class="p">}</span></code></pre></figure>
+
+<h4 id="valid-transaction-id">Valid transaction id</h4>
+<p>The id in the transaction must be correctly calculated.</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span>    <span class="k">if</span> <span class="p">(</span><span class="nx">getTransactionId</span><span class="p">(</span><span class="nx">transaction</span><span class="p">)</span> <span class="o">!==</span> <span class="nx">transaction</span><span class="p">.</span><span class="nx">id</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;invalid tx id: &#39;</span> <span class="o">+</span> <span class="nx">transaction</span><span class="p">.</span><span class="nx">id</span><span class="p">);</span>
+        <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></figure>
+
+<h4 id="valid-txins">Valid txIns</h4>
+<p>The signatures in the txIns must be valid and the referenced outputs must have not been spent.</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">const</span> <span class="nx">validateTxIn</span> <span class="o">=</span> <span class="p">(</span><span class="nx">txIn</span>: <span class="kt">TxIn</span><span class="p">,</span> <span class="nx">transaction</span>: <span class="kt">Transaction</span><span class="p">,</span> <span class="nx">aUnspentTxOuts</span>: <span class="kt">UnspentTxOut</span><span class="p">[])</span><span class="o">:</span> <span class="kr">boolean</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">referencedUTxOut</span>: <span class="kt">UnspentTxOut</span> <span class="o">=</span>
+        <span class="nx">aUnspentTxOuts</span><span class="p">.</span><span class="nx">find</span><span class="p">((</span><span class="nx">uTxO</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">uTxO</span><span class="p">.</span><span class="nx">txOutId</span> <span class="o">===</span> <span class="nx">txIn</span><span class="p">.</span><span class="nx">txOutId</span> <span class="o">&amp;&amp;</span> <span class="nx">uTxO</span><span class="p">.</span><span class="nx">txOutId</span> <span class="o">===</span> <span class="nx">txIn</span><span class="p">.</span><span class="nx">txOutId</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">referencedUTxOut</span> <span class="o">==</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;referenced txOut not found: &#39;</span> <span class="o">+</span> <span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">txIn</span><span class="p">));</span>
+        <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="kr">const</span> <span class="nx">address</span> <span class="o">=</span> <span class="nx">referencedUTxOut</span><span class="p">.</span><span class="nx">address</span><span class="p">;</span>
+
+    <span class="kr">const</span> <span class="nx">key</span> <span class="o">=</span> <span class="nx">ec</span><span class="p">.</span><span class="nx">keyFromPublic</span><span class="p">(</span><span class="nx">address</span><span class="p">,</span> <span class="s1">&#39;hex&#39;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nx">key</span><span class="p">.</span><span class="nx">verify</span><span class="p">(</span><span class="nx">transaction</span><span class="p">.</span><span class="nx">id</span><span class="p">,</span> <span class="nx">txIn</span><span class="p">.</span><span class="nx">signature</span><span class="p">);</span>
+<span class="p">};</span></code></pre></figure>
+
+<h4 id="valid-txout-values">Valid txOut values</h4>
+<p>The sums of the values specified in the outputs must be equal to the sums of the values specified in the inputs. If you refer to an output that contains 50 coins, the sum of the values in the new outputs must also be 50 coins.</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span>    <span class="kr">const</span> <span class="nx">totalTxInValues</span>: <span class="kt">number</span> <span class="o">=</span> <span class="nx">transaction</span><span class="p">.</span><span class="nx">txIns</span>
+        <span class="p">.</span><span class="nx">map</span><span class="p">((</span><span class="nx">txIn</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">getTxInAmount</span><span class="p">(</span><span class="nx">txIn</span><span class="p">,</span> <span class="nx">aUnspentTxOuts</span><span class="p">))</span>
+        <span class="p">.</span><span class="nx">reduce</span><span class="p">((</span><span class="nx">a</span><span class="p">,</span> <span class="nx">b</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">a</span> <span class="o">+</span> <span class="nx">b</span><span class="p">),</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="kr">const</span> <span class="nx">totalTxOutValues</span>: <span class="kt">number</span> <span class="o">=</span> <span class="nx">transaction</span><span class="p">.</span><span class="nx">txOuts</span>
+        <span class="p">.</span><span class="nx">map</span><span class="p">((</span><span class="nx">txOut</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">txOut</span><span class="p">.</span><span class="nx">amount</span><span class="p">)</span>
+        <span class="p">.</span><span class="nx">reduce</span><span class="p">((</span><span class="nx">a</span><span class="p">,</span> <span class="nx">b</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">a</span> <span class="o">+</span> <span class="nx">b</span><span class="p">),</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="nx">totalTxOutValues</span> <span class="o">!==</span> <span class="nx">totalTxInValues</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;totalTxOutValues !== totalTxInValues in tx: &#39;</span> <span class="o">+</span> <span class="nx">transaction</span><span class="p">.</span><span class="nx">id</span><span class="p">);</span>
+        <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></figure>
+
+<h3 id="coinbase-transaction">Coinbase transaction</h3>
+<p>Transaction inputs must always refer to unspent transaction outputs, but from where does the initial coins come in to the blockchain? To solve this, a special type of transaction is introduced: <strong>coinbase transaction</strong></p>
+
+<p>The coinbase transaction contains only an ouput, but no inputs. This means that a coinbase transaction adds new coins to circulation. We specify the amount of the coinbase output to be 50 coins.</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">const</span> <span class="nx">COINBASE_AMOUNT</span>: <span class="kt">number</span> <span class="o">=</span> <span class="mi">50</span><span class="p">;</span></code></pre></figure>
+
+<p>The coinbase transaction is always the first transaction in the block and it is included by the miner of the block. The coinbase reward acts as an incentive for the miners: if you find the block, you are able to collect 50 coins.</p>
+
+<p>We will add the block height to input of the coinbase transaction. This is to ensure that each coinbase transaction has a unique txId. Without this rule, for instance, a coinbase transaction stating “give 50 coins to address 0xabc” would always have the same txId.</p>
+
+<p>The validation of the coinbase transaction differs slightly from the validation of a “normal” transaction</p>
+
+<figure class="highlight"><pre><code class="language-ts" data-lang="ts"><span></span><span class="kr">const</span> <span class="nx">validateCoinbaseTx</span> <span class="o">=</span> <span class="p">(</span><span class="nx">transaction</span>: <span class="kt">Transaction</span><span class="p">,</span> <span class="nx">blockIndex</span>: <span class="kt">number</span><span class="p">)</span><span class="o">:</span> <span class="kr">boolean</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">getTransactionId</span><span class="p">(</span><span class="nx">transaction</span><span class="p">)</span> <span class="o">!==</span> <span class="nx">transaction</span><span class="p">.</span><span class="nx">id</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;invalid coinbase tx id: &#39;</span> <span class="o">+</span> <span class="nx">transaction</span><span class="p">.</span><span class="nx">id</span><span class="p">);</span>
+        <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">transaction</span><span class="p">.</span><span class="nx">txIns</span><span class="p">.</span><span class="nx">length</span> <span class="o">!==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;one txIn must be specified in the coinbase transaction&#39;</span><span class="p">);</span>
+        <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">transaction</span><span class="p">.</span><span class="nx">txIns</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">txOutIndex</span> <span class="o">!==</span> <span class="nx">blockIndex</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;the txIn index in coinbase tx must be the block height&#39;</span><span class="p">);</span>
+        <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">transaction</span><span class="p">.</span><span class="nx">txOuts</span><span class="p">.</span><span class="nx">length</span> <span class="o">!==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;invalid number of txOuts in coinbase transaction&#39;</span><span class="p">);</span>
+        <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">transaction</span><span class="p">.</span><span class="nx">txOuts</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">amount</span> <span class="o">!=</span> <span class="nx">COINBASE_AMOUNT</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;invalid coinbase amount in coinbase transaction&#39;</span><span class="p">);</span>
+        <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
+<span class="p">};</span></code></pre></figure>
+
+<h3 id="conclusions">Conclusions</h3>
+<p>We included the concept of transactions to the blockchain. The basic idea is quite simple: we refer to unspent outputs in transaction inputs and use signatures to show that the unlocking part is valid. We then use outputs to “relock” them to a receiver address.</p>
+
+<p>However, creating transactions is still very difficult. We must manually create the inputs and outputs of the transactions and sign them using our private keys. This will change when we introduce wallets in the <a href="/jekyll/update/2017/07/11/chapter4.html">next chapter</a>.</p>
+
+<p>There is also no transaction relaying yet: to include a transaction to the blockchain, you must mine it yourself. This is also the reason we did not yet introduce the concept of transaction fee.</p>
+
+<p>The full code implemented in this chapter can be found <a href="https://github.com/lhartikk/naivecoin/tree/chapter3">here</a></p>
+
+<p><a href="/jekyll/update/2017/07/11/chapter4.html">To chapter4</a></p>
+
+
+  </div>
+
+  
+</article>
+
+      </div>
+    </main>
+
+    <footer class="site-footer">
+
+
+</footer>
+
+
+  </body>
+
+</html>

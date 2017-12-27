@@ -1,0 +1,19 @@
+---
+layout: post
+title:  "#0: Introduction"
+categories: jekyll update
+---
+
+In this tutorial we will code from scratch some of the basic concepts that are needed for a working cryptocurrency. The angle is always to implement things in the most simplest way.
+
+The project that we will build in this tutorial is called "Naivecoin". The programming language is [Typescript][typescript]. The Naivecoin is in some terms an extension to the [Naivechain - blockchain in 200 lines of code][naivechain].
+
+The final version of Naivecoin is by no means a "production ready" implementation of a cryptocurrency, but rather tries to show that the basic principles in a cryptocurrency can be implemented in a concise way.
+
+ I hope this tutorial will help you understand more of the technical ascpects of a cryptocurrency.
+
+[To chapter1][chapter1]
+
+[chapter1]: {{ site.baseurl }} {% post_url 2017-07-14-chapter1 %}
+[typescript]: https://www.typescriptlang.org/
+[naivechain]: https://medium.com/@lhartikk/a-blockchain-in-200-lines-of-code-963cc1cc0e54
