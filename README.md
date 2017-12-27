@@ -1,5 +1,7 @@
-#Naivecoin: chapter 1
+# Naivecoin: chapter 1
 The branch for Naivecoin, chapter1
 
-```npm install
-npm start```
+```
+npm install
+npm start
+```
