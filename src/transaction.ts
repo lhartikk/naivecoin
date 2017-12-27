@@ -58,7 +58,7 @@ const getTransactionId = (transaction: Transaction): string => {
 
 const validateTransaction = (transaction: Transaction, aUnspentTxOuts: UnspentTxOut[]): boolean => {
 
-    if(!isValidTransactionStructure(transaction)) {
+    if (!isValidTransactionStructure(transaction)) {
         return false;
     }
 
