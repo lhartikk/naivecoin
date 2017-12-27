@@ -1,5 +1,5 @@
-# Naivecoin: chapter 6
-The branch for Naivecoin, chapter6
+# Naivecoin
+The master branch of Naivecoin
 
 ```
 npm install
