@@ -82,7 +82,11 @@ const getAdjustedDifficulty = (latestBlock: Block, aBlockchain: Block[]) => {
     if (timeTaken < timeExpected / 2) {
         return prevAdjustmentBlock.difficulty + 1;
     } else if (timeTaken > timeExpected * 2) {
-        return prevAdjustmentBlock.difficulty - 1;
+        if (prevAdjustmentBlock.difficulty > 0) {
+            return prevAdjustmentBlock.difficulty - 1;
+        } else {
+            return 0;
+        }
     } else {
         return prevAdjustmentBlock.difficulty;
     }
