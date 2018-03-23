@@ -140,7 +140,7 @@ const validateCoinbaseTx = (transaction: Transaction, blockIndex: number): boole
     }
     if (transaction.txIns.length !== 1) {
         console.log('one txIn must be specified in the coinbase transaction');
-        return;
+        return false;
     }
     if (transaction.txIns[0].txOutIndex !== blockIndex) {
         console.log('the txIn signature in coinbase tx must be the block height');
