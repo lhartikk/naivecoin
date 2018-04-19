@@ -40,7 +40,7 @@ const genesisTransaction = {
 };
 
 const genesisBlock: Block = new Block(
-    0, '91a73664bc84c0baa1fc75ea6e4aa6d1d20c5df664c724e3159aefc2e1186627', '', 1465154705, [genesisTransaction], 0, 0
+    0, '000000009907ebe692ce9323fe7740a96795f527152a33a9d8649b85702f296a', '', 1523976668, [genesisTransaction], 0, 0
 );
 
 let blockchain: Block[] = [genesisBlock];
