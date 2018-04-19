@@ -5,7 +5,7 @@
   "scripts": {
     "prestart": "npm run compile",
     "start": "node src/main.js",
-    "stop": "kill -9 16 70",
+    "stop": "kill -9 93",
     "compile": "tsc"
   },
   "dependencies": {
