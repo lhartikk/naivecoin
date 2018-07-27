@@ -1,7 +1,10 @@
-# Naivecoin
+# Dewcoin 
 
-The repository for the naivecoin tutorial: https://lhartikk.github.io/
+naivecoin dew computing version. a proof of concept for blockchain applications that follow dew computing principles. http://www.dewcomputing.org/
 
+(in progress)
+
+Basic principles of naivecoin can be found in: A tutorial for building a cryptocurrency https://lhartikk.github.io/
 ```
 npm install
 npm start
