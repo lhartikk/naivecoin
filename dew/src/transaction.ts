@@ -6,6 +6,9 @@ const ec = new ecdsa.ec('secp256k1');
 
 const COINBASE_AMOUNT: number = 50;
 
+const ACCOUNT_ACTIVE_PERIOD: number = 10000; //n days.//should check
+
+
 /*
 class UnspentTxOut {
     public readonly txOutId: string;
@@ -77,9 +80,9 @@ class Transaction {
     constructor(sender: Account, receiver: Account, amount: number) {
         this.sender = sender;
         this.receiver = receiver
-        thia.prev-balance = 0;
+        thia.prev-balance = 0;//This item is only used when put in an account
         this.amount = amount;
-        this.after-balance = 0;
+        this.after-balance = 0;//This item is only used when it is put in an account.
         this.timestampt = getCurrentTimestamp();
         this.txIndex = ++sender.txIndex;
     }
@@ -160,12 +163,11 @@ const validateTransaction = (transaction: Transaction, AccountDB: Account[]): bo
         console.log('The sender does not have enough coins. tx: ' + transaction.id);
         return false;
     }
-    const AccountActivePeriod = 10000; //n days.
-    if (transaction.timestampt < Date() - AccountActivePeriod){
+    if (transaction.timestampt < (Date() - ACCOUNT_ACTIVE_PERIOD)){//should check
         console.log('The transaction is too old. tx: ' + transaction.id);
         return false;
     }
-    if (transaction.txIndex IN transaction.sender.transactions.map(txIndex)){
+    if (transaction.txIndex IN transaction.sender.transactions.map((tx: Transaction) => tx.txIndex)){//should check
         console.log('The transaction is duplicated. tx: ' + transaction.id);
         return false;
     }
@@ -174,6 +176,8 @@ const validateTransaction = (transaction: Transaction, AccountDB: Account[]): bo
 };
 
 
+
+/*
 const validateBlockTransactions = (aTransactions: Transaction[], aUnspentTxOuts: UnspentTxOut[], blockIndex: number): boolean => {
     const coinbaseTx = aTransactions[0];
     if (!validateCoinbaseTx(coinbaseTx, blockIndex)) {
@@ -181,7 +185,29 @@ const validateBlockTransactions = (aTransactions: Transaction[], aUnspentTxOuts:
         return false;
     }
 
-    // currently, duplicate transactions are allowed as long as the 
+    const txIns: TxIn[] = _(aTransactions)
+        .map((tx) => tx.txIns)
+        .flatten()
+        .value();
+
+    if (hasDuplicates(txIns)) {
+        return false;
+    }
+
+    // all but coinbase transactions
+    const normalTransactions: Transaction[] = aTransactions.slice(1);
+    return normalTransactions.map((tx) => validateTransaction(tx, aUnspentTxOuts))
+        .reduce((a, b) => (a && b), true);
+
+};
+*/
+const validateBlockTransactions = (aTransactions: Transaction[], aUnspentTxOuts: UnspentTxOut[], blockIndex: number): boolean => {
+    const coinbaseTx = aTransactions[0];
+    if (!validateCoinbaseTx(coinbaseTx, blockIndex)) {
+        console.log('invalid coinbase transaction: ' + JSON.stringify(coinbaseTx));
+        return false;
+    }
+
 
 
     const txIns: TxIn[] = _(aTransactions)
@@ -199,6 +225,7 @@ const validateBlockTransactions = (aTransactions: Transaction[], aUnspentTxOuts:
         .reduce((a, b) => (a && b), true);
 
 };
+
 
 const hasDuplicates = (txIns: TxIn[]): boolean => {
     const groups = _.countBy(txIns, (txIn: TxIn) => txIn.txOutId + txIn.txOutIndex);
