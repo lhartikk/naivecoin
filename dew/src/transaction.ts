@@ -2,12 +2,15 @@ import * as CryptoJS from 'crypto-js';
 import * as ecdsa from 'elliptic';
 import * as _ from 'lodash';
 
-const ec = new ecdsa.ec('secp256k1');
+//dewcoin
+import {getCurrentTimestamp} from './blockchain';
 
+const ec = new ecdsa.ec('secp256k1');
 const COINBASE_AMOUNT: number = 50;
 
-const ACCOUNT_ACTIVE_PERIOD: number = 10000; //n days.//should check
-
+//dewcoin
+const ACCOUNT_ACTIVE_PERIOD: number = 60*60*24*31; //31 days.
+const ACCOUNT_PURGE_PERIOD: number = 60*60*24*32; //32 days.
 
 /*
 class UnspentTxOut {
@@ -27,14 +30,12 @@ class UnspentTxOut {
 class Account {
     public readonly address: string;
     public balance: number;
-    public txIndex: number;
-    public transactions: Transaction[];
+    public txHistory: TxHistory[];
 
     constructor(address: string) {
         this.address = address;
         this.balance = 0;
-        this.txIndex = 0;
-        this.transactions = [];
+        this.txHistory = [];
     }
 }
 
@@ -65,26 +66,30 @@ class Transaction {
 }
 */
 class Transaction {
-
     public id: string;
-
-    public sender: Account; //sender address
-    public receiver: Account;  //receiver address.
-    public prev-balance: number;
+    public sender: string;
+    public receiver: string;
     public amount: number;
-    public after-balance: number;
     public timestamp: number;
-    public txIndex: number;
     public signature: string;
 
-    constructor(sender: Account, receiver: Account, amount: number) {
+    constructor(sender: string, receiver: string, amount: number) {
         this.sender = sender;
-        this.receiver = receiver
-        thia.prev-balance = 0;//This item is only used when put in an account
+        this.receiver = receiver;
         this.amount = amount;
-        this.after-balance = 0;//This item is only used when it is put in an account.
-        this.timestampt = getCurrentTimestamp();
-        this.txIndex = ++sender.txIndex;
+    }
+}
+class TxHistory {
+    public id: string;
+    public txAccount: string; //the account that this transaction involvs.
+    public prevBalance: number;
+    public amount: number; // plus or minus. reflect the change of the balance.
+    public afterBalance: number;
+    public timestamp: number;
+
+    constructor(txAccount: string, amount: number) {
+        this.txAccount = txAccount;
+        this.amount = amount;
     }
 }
 
@@ -102,8 +107,10 @@ const getTransactionId = (transaction: Transaction): string => {
 };
 */
 const getTransactionId = (transaction: Transaction): string => {
-    return CryptoJS.SHA256(transaction.sender.address + transaction.receiver.address + transaction.amount + transaction.timestampt + transaction.txIndex).toString();
+    return CryptoJS.SHA256(transaction.sender + transaction.receiver + transaction.amount + transaction.timestamp).toString();
 };
+
+
 
 /*
 const validateTransaction = (transaction: Transaction, aUnspentTxOuts: UnspentTxOut[]): boolean => {
@@ -141,7 +148,19 @@ const validateTransaction = (transaction: Transaction, aUnspentTxOuts: UnspentTx
     return true;
 };
 */
-const validateTransaction = (transaction: Transaction, AccountDB: Account[]): boolean => {
+const existAccount = (address: string, accounts: Account[]): boolean => {
+    return _(accounts).map((acc: Account) => acc.address).includes(address);
+}
+const createAccount = (address: string, accounts: Account[]): boolean => {
+    var acc: Account = new Account(address);
+    accounts.push(acc);
+    return true;
+}
+const findAccount = (address: string, accounts: Account[]): Account => {
+    var account: Account = _.find(accounts, (acc: Account) => {return acc.address == address});
+    return account;
+}
+const validateTransaction = (transaction: Transaction, accounts: Account[]): boolean => {
 
     if (!isValidTransactionStructure(transaction)) {
         return false;
@@ -151,23 +170,22 @@ const validateTransaction = (transaction: Transaction, AccountDB: Account[]): bo
         console.log('invalid tx id: ' + transaction.id);
         return false;
     }
-    if (!exsitAccount(transaction.sender)) {
-        console.log('The sender does not have an account. tx: ' + transaction.id);
+
+    const hasValidSignature: boolean = validateSignature(transaction);
+    if (!hasValidSignature) {
+        console.log('The signature is invalid in tx: ' + transaction.id);
         return false;
     }
-    if (!exsitAccount(transaction.receiver)) {
-        console.log('The receiver does not have an account. tx: ' + transaction.id);
-        return false;
-    }
-    if (transaction.amount > transaction.sender.balance) {
+    accSender = _.find(accounts, (acc: Account) => {return acc.address == transaction.sender});
+    if (transaction.amount > accSender.balance) {
         console.log('The sender does not have enough coins. tx: ' + transaction.id);
         return false;
     }
-    if (transaction.timestampt < (Date() - ACCOUNT_ACTIVE_PERIOD)){//should check
+    if (transaction.timestamp < (getCurrentTimestamp() - ACCOUNT_ACTIVE_PERIOD)){
         console.log('The transaction is too old. tx: ' + transaction.id);
         return false;
     }
-    if (transaction.txIndex IN transaction.sender.transactions.map((tx: Transaction) => tx.txIndex)){//should check
+    if (_(accSender.txHistory).map((th: TxHistory) => th.id).includes(transaction.id)){
         console.log('The transaction is duplicated. tx: ' + transaction.id);
         return false;
     }
@@ -201,32 +219,28 @@ const validateBlockTransactions = (aTransactions: Transaction[], aUnspentTxOuts:
 
 };
 */
-const validateBlockTransactions = (aTransactions: Transaction[], aUnspentTxOuts: UnspentTxOut[], blockIndex: number): boolean => {
+const validateBlockTransactions = (aTransactions: Transaction[], accounts: Account[]): boolean => {
     const coinbaseTx = aTransactions[0];
-    if (!validateCoinbaseTx(coinbaseTx, blockIndex)) {
+    if (!validateCoinbaseTx(coinbaseTx)) {
         console.log('invalid coinbase transaction: ' + JSON.stringify(coinbaseTx));
         return false;
     }
-
-
-
-    const txIns: TxIn[] = _(aTransactions)
-        .map((tx) => tx.txIns)
-        .flatten()
+    const txIds: number[] = _(aTransactions)
+        .map((tx) => tx.id)
         .value();
 
-    if (hasDuplicates(txIns)) {
+    if (hasDuplicates(txIds)) {
         return false;
     }
 
     // all but coinbase transactions
     const normalTransactions: Transaction[] = aTransactions.slice(1);
-    return normalTransactions.map((tx) => validateTransaction(tx, aUnspentTxOuts))
+    return normalTransactions.map((tx) => validateTransaction(tx, accounts))
         .reduce((a, b) => (a && b), true);
-
 };
 
 
+/*
 const hasDuplicates = (txIns: TxIn[]): boolean => {
     const groups = _.countBy(txIns, (txIn: TxIn) => txIn.txOutId + txIn.txOutIndex);
     return _(groups)
@@ -240,7 +254,23 @@ const hasDuplicates = (txIns: TxIn[]): boolean => {
         })
         .includes(true);
 };
+*/
+const hasDuplicates = (nums: number[]): boolean => {
+    const groups = _.countBy(nums);
+    return _(groups)
+        .map((value, key) => {
+            if (value > 1) {
+                console.log('duplicate number: ' + key);
+                return true;
+            } else {
+                return false;
+            }
+        })
+        .includes(true);
+};
 
+
+/*
 const validateCoinbaseTx = (transaction: Transaction, blockIndex: number): boolean => {
     if (transaction == null) {
         console.log('the first transaction in the block must be coinbase transaction');
@@ -268,7 +298,30 @@ const validateCoinbaseTx = (transaction: Transaction, blockIndex: number): boole
     }
     return true;
 };
+*/
+const validateCoinbaseTx = (transaction: Transaction): boolean => {
+    if (transaction == null) {
+        console.log('the first transaction in the block must be coinbase transaction');
+        return false;
+    }
+    if (getTransactionId(transaction) !== transaction.id) {
+        console.log('invalid coinbase tx id: ' + transaction.id);
+        return false;
+    }
+    if (transaction.sender !== "coinbase") {
+        console.log('It is not a coinbase transaction');
+        return;
+    }
+    if (transaction.amount !== COINBASE_AMOUNT) {
+        console.log('invalid coinbase amount in coinbase transaction');
+        return false;
+    }
+    return true;
+};
 
+
+
+/*
 const validateTxIn = (txIn: TxIn, transaction: Transaction, aUnspentTxOuts: UnspentTxOut[]): boolean => {
     const referencedUTxOut: UnspentTxOut =
         aUnspentTxOuts.find((uTxO) => uTxO.txOutId === txIn.txOutId && uTxO.txOutIndex === txIn.txOutIndex);
@@ -286,15 +339,30 @@ const validateTxIn = (txIn: TxIn, transaction: Transaction, aUnspentTxOuts: Unsp
     }
     return true;
 };
+*/
+const validateSignature = (transaction: Transaction): boolean => {
+    const key = ec.keyFromPublic(transaction.sender, 'hex');
+    const validSignature: boolean = key.verify(transaction.id, transaction.signature);
+    if (!validSignature) {
+        console.log('invalid tx signature: %s txId: %s address: %s', transaction.signature, transaction.id, transaction.sender);
+        return false;
+    }
+    return true;
+};
 
+
+
+/*
 const getTxInAmount = (txIn: TxIn, aUnspentTxOuts: UnspentTxOut[]): number => {
     return findUnspentTxOut(txIn.txOutId, txIn.txOutIndex, aUnspentTxOuts).amount;
 };
-
 const findUnspentTxOut = (transactionId: string, index: number, aUnspentTxOuts: UnspentTxOut[]): UnspentTxOut => {
     return aUnspentTxOuts.find((uTxO) => uTxO.txOutId === transactionId && uTxO.txOutIndex === index);
 };
+*/
 
+
+/*
 const getCoinbaseTransaction = (address: string, blockIndex: number): Transaction => {
     const t = new Transaction();
     const txIn: TxIn = new TxIn();
@@ -307,7 +375,16 @@ const getCoinbaseTransaction = (address: string, blockIndex: number): Transactio
     t.id = getTransactionId(t);
     return t;
 };
+*/
+const getCoinbaseTransaction = (miner: string): Transaction => {
+    const t = new Transaction("coinbase", miner, COINBASE_AMOUNT);
+    t.timestamp = getCurrentTimestamp();
+    t.id = getTransactionId(t);
+    return t;
+};
 
+
+/*
 const signTxIn = (transaction: Transaction, txInIndex: number,
                   privateKey: string, aUnspentTxOuts: UnspentTxOut[]): string => {
     const txIn: TxIn = transaction.txIns[txInIndex];
@@ -330,7 +407,22 @@ const signTxIn = (transaction: Transaction, txInIndex: number,
 
     return signature;
 };
+*/
+const signTransaction = (transaction: Transaction, privateKey: string): string => {
+    const dataToSign = transaction.id;
+    if (getPublicKey(privateKey) !== transaction.sender) {
+        console.log('trying to sign an input with private' +
+            ' key that does not match the address');
+        throw Error();
+    }
+    const key = ec.keyFromPrivate(privateKey, 'hex');
+    const signature: string = toHexString(key.sign(dataToSign).toDER());
 
+    return signature;
+};
+
+
+/*
 const updateUnspentTxOuts = (aTransactions: Transaction[], aUnspentTxOuts: UnspentTxOut[]): UnspentTxOut[] => {
     const newUnspentTxOuts: UnspentTxOut[] = aTransactions
         .map((t) => {
@@ -349,7 +441,50 @@ const updateUnspentTxOuts = (aTransactions: Transaction[], aUnspentTxOuts: Unspe
 
     return resultingUnspentTxOuts;
 };
+*/
+const updateAccounts = (aTransactions: Transaction[], accounts: Account[]): Account[] => {
+	var amt: number;
+	var thSender: TxHistory;
+	var thReceiver: TxHistory;
+	var accSender: Account;
+	var accReceiver: Account;
+	var now: number;
 
+	for(var i=0; i<aTransactions.length; i++){
+		amt = aTransactions[i].amount;
+		now = getCurrentTimestamp();
+		if(aTransactions[i].sender !== "coinbase"){
+	    		if (!exsitAccount(aTransactions[i].sender, accounts)) {
+        			createAccount(aTransactions[i].sender, accounts);
+    			}
+			accSender = findAccount(aTransactions[i].sender, accounts);
+		thSender = new TxHistory(aTransactions[i].receiver, -amt);
+		thSender.id = aTransactions[i].id;
+		thSender.timestamp = aTransactions[i].timestamp;
+		thSender.prevBalance = accSender.balance;
+		accSender.balance -= amt;
+		thSender.afterBalance = accSender.balance;
+		accSender.txHistory = _(accSender.txHistory).filter((th: TxHistory) => {th.timsstamp < (now + ACCOUNT_PURGE_PERIOD)}).push(thSender);
+			//clean txHistory at the same time.
+		}
+    		if (!exsitAccount(aTransactions[i].receiver, accounts)) {
+        		createAccount(aTransactions[i].receiver, accounts);
+    		}
+		accReceiver = findAccount(aTransactions[i].receiver, accounts);
+		thReceiver = new TxHistory(aTransactions[i].sender, amt);
+		thReceiver.id = aTransactions[i].id;
+		thReceiver.timestamp = aTransactions[i].timestamp;
+		thReceiver.prevBalance = accReceiver.balance;
+		accReceiver.balance += amt;
+		thReceiver.afterBalance = accSender.balance;
+		accReceiver.txHistory = _(accReceiver.txHistory).filter((th: TxHistory) => {th.timsstamp < (now + ACCOUNT_PURGE_PERIOD)}).push(thReceiver);
+		//clean txHistory at the same time.
+	}
+    return accounts;//check again
+};
+
+
+/*
 const processTransactions = (aTransactions: Transaction[], aUnspentTxOuts: UnspentTxOut[], blockIndex: number) => {
 
     if (!validateBlockTransactions(aTransactions, aUnspentTxOuts, blockIndex)) {
@@ -358,6 +493,18 @@ const processTransactions = (aTransactions: Transaction[], aUnspentTxOuts: Unspe
     }
     return updateUnspentTxOuts(aTransactions, aUnspentTxOuts);
 };
+*/
+const processTransactions = (aTransactions: Transaction[], accounts: Account[]) => {
+
+    if (!validateBlockTransactions(aTransactions, accounts)) {
+        console.log('invalid block transactions');
+        return null;
+    }
+    return updateAccounts(aTransactions, accounts);
+};
+
+
+
 
 const toHexString = (byteArray): string => {
     return Array.from(byteArray, (byte: any) => {
@@ -369,6 +516,8 @@ const getPublicKey = (aPrivateKey: string): string => {
     return ec.keyFromPrivate(aPrivateKey, 'hex').getPublic().encode('hex');
 };
 
+
+/*
 const isValidTxInStructure = (txIn: TxIn): boolean => {
     if (txIn == null) {
         console.log('txIn is null');
@@ -386,7 +535,6 @@ const isValidTxInStructure = (txIn: TxIn): boolean => {
         return true;
     }
 };
-
 const isValidTxOutStructure = (txOut: TxOut): boolean => {
     if (txOut == null) {
         console.log('txOut is null');
@@ -404,7 +552,11 @@ const isValidTxOutStructure = (txOut: TxOut): boolean => {
         return true;
     }
 };
+*/
 
+
+
+/*
 const isValidTransactionStructure = (transaction: Transaction) => {
     if (typeof transaction.id !== 'string') {
         console.log('transactionId missing');
@@ -432,6 +584,35 @@ const isValidTransactionStructure = (transaction: Transaction) => {
     }
     return true;
 };
+*/
+const isValidTransactionStructure = (transaction: Transaction) => {
+    if (typeof transaction.id !== 'string') {
+        console.log('transactionId missing');
+        return false;
+    }
+    if (typeof transaction.sender !== 'string') {
+        console.log('transaction sender missing');
+        return false;
+    }
+    if (typeof transaction.receiver !== 'string') {
+        console.log('transaction receiver missing');
+        return false;
+    }
+    if (typeof transaction.amount !== 'number') {
+        console.log('transaction amount missing');
+        return false;
+    }
+    if (typeof transaction.timsstamp !== 'number') {
+        console.log('transaction timestamp missing');
+        return false;
+    }
+    if (typeof transaction.signature !== 'string') {
+        console.log('transaction signature missing');
+        return false;
+    }
+    return true;
+};
+
 
 // valid address is a valid ecdsa public key in the 04 + X-coordinate + Y-coordinate format
 const isValidAddress = (address: string): boolean => {
@@ -449,8 +630,20 @@ const isValidAddress = (address: string): boolean => {
     return true;
 };
 
+
+/*
 export {
     processTransactions, signTxIn, getTransactionId, isValidAddress, validateTransaction,
     UnspentTxOut, TxIn, TxOut, getCoinbaseTransaction, getPublicKey, hasDuplicates,
     Transaction
 };
+*/
+export {
+    processTransactions, signTransaction, getTransactionId, isValidAddress, validateTransaction,
+    Account, getCoinbaseTransaction, getPublicKey, hasDuplicates,
+    Transaction
+};
+//signTxIn => signTransaction
+//UnspentTxOut => Account
+//TxIn
+//TxOut
