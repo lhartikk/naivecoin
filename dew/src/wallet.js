@@ -1,87 +1,88 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const elliptic_1 = require("elliptic");
-const fs_1 = require("fs");
-const _ = require("lodash");
-const transaction_1 = require("./transaction");
-const EC = new elliptic_1.ec('secp256k1');
-const privateKeyLocation = process.env.PRIVATE_KEY || 'node/wallet/private_key';
-const getPrivateFromWallet = () => {
-    const buffer = fs_1.readFileSync(privateKeyLocation, 'utf8');
+exports.__esModule = true;
+var elliptic_1 = require("elliptic");
+var fs_1 = require("fs");
+var _ = require("lodash");
+var transaction_1 = require("./transaction");
+var EC = new elliptic_1.ec('secp256k1');
+var privateKeyLocation = process.env.PRIVATE_KEY || 'node/wallet/private_key';
+var getPrivateFromWallet = function () {
+    var buffer = fs_1.readFileSync(privateKeyLocation, 'utf8');
     return buffer.toString();
 };
 exports.getPrivateFromWallet = getPrivateFromWallet;
-const getPublicFromWallet = () => {
-    const privateKey = getPrivateFromWallet();
-    const key = EC.keyFromPrivate(privateKey, 'hex');
+var getPublicFromWallet = function () {
+    var privateKey = getPrivateFromWallet();
+    var key = EC.keyFromPrivate(privateKey, 'hex');
     return key.getPublic().encode('hex');
 };
 exports.getPublicFromWallet = getPublicFromWallet;
-const generatePrivateKey = () => {
-    const keyPair = EC.genKeyPair();
-    const privateKey = keyPair.getPrivate();
+var generatePrivateKey = function () {
+    var keyPair = EC.genKeyPair();
+    var privateKey = keyPair.getPrivate();
     return privateKey.toString(16);
 };
 exports.generatePrivateKey = generatePrivateKey;
-const initWallet = () => {
+var initWallet = function () {
     // let's not override existing private keys
     if (fs_1.existsSync(privateKeyLocation)) {
         return;
     }
-    const newPrivateKey = generatePrivateKey();
+    var newPrivateKey = generatePrivateKey();
     fs_1.writeFileSync(privateKeyLocation, newPrivateKey);
     console.log('new wallet with private key created to : %s', privateKeyLocation);
 };
 exports.initWallet = initWallet;
-const deleteWallet = () => {
+var deleteWallet = function () {
     if (fs_1.existsSync(privateKeyLocation)) {
         fs_1.unlinkSync(privateKeyLocation);
     }
 };
 exports.deleteWallet = deleteWallet;
-const getBalance = (address, unspentTxOuts) => {
+var getBalance = function (address, unspentTxOuts) {
     return _(findUnspentTxOuts(address, unspentTxOuts))
-        .map((uTxO) => uTxO.amount)
+        .map(function (uTxO) { return uTxO.amount; })
         .sum();
 };
 exports.getBalance = getBalance;
-const findUnspentTxOuts = (ownerAddress, unspentTxOuts) => {
-    return _.filter(unspentTxOuts, (uTxO) => uTxO.address === ownerAddress);
+var findUnspentTxOuts = function (ownerAddress, unspentTxOuts) {
+    return _.filter(unspentTxOuts, function (uTxO) { return uTxO.address === ownerAddress; });
 };
 exports.findUnspentTxOuts = findUnspentTxOuts;
-const findTxOutsForAmount = (amount, myUnspentTxOuts) => {
-    let currentAmount = 0;
-    const includedUnspentTxOuts = [];
-    for (const myUnspentTxOut of myUnspentTxOuts) {
+var findTxOutsForAmount = function (amount, myUnspentTxOuts) {
+    var currentAmount = 0;
+    var includedUnspentTxOuts = [];
+    for (var _i = 0, myUnspentTxOuts_1 = myUnspentTxOuts; _i < myUnspentTxOuts_1.length; _i++) {
+        var myUnspentTxOut = myUnspentTxOuts_1[_i];
         includedUnspentTxOuts.push(myUnspentTxOut);
         currentAmount = currentAmount + myUnspentTxOut.amount;
         if (currentAmount >= amount) {
-            const leftOverAmount = currentAmount - amount;
-            return { includedUnspentTxOuts, leftOverAmount };
+            var leftOverAmount = currentAmount - amount;
+            return { includedUnspentTxOuts: includedUnspentTxOuts, leftOverAmount: leftOverAmount };
         }
     }
-    const eMsg = 'Cannot create transaction from the available unspent transaction outputs.' +
+    var eMsg = 'Cannot create transaction from the available unspent transaction outputs.' +
         ' Required amount:' + amount + '. Available unspentTxOuts:' + JSON.stringify(myUnspentTxOuts);
     throw Error(eMsg);
 };
-const createTxOuts = (receiverAddress, myAddress, amount, leftOverAmount) => {
-    const txOut1 = new transaction_1.TxOut(receiverAddress, amount);
+var createTxOuts = function (receiverAddress, myAddress, amount, leftOverAmount) {
+    var txOut1 = new transaction_1.TxOut(receiverAddress, amount);
     if (leftOverAmount === 0) {
         return [txOut1];
     }
     else {
-        const leftOverTx = new transaction_1.TxOut(myAddress, leftOverAmount);
+        var leftOverTx = new transaction_1.TxOut(myAddress, leftOverAmount);
         return [txOut1, leftOverTx];
     }
 };
-const filterTxPoolTxs = (unspentTxOuts, transactionPool) => {
-    const txIns = _(transactionPool)
-        .map((tx) => tx.txIns)
+var filterTxPoolTxs = function (unspentTxOuts, transactionPool) {
+    var txIns = _(transactionPool)
+        .map(function (tx) { return tx.txIns; })
         .flatten()
         .value();
-    const removable = [];
-    for (const unspentTxOut of unspentTxOuts) {
-        const txIn = _.find(txIns, (aTxIn) => {
+    var removable = [];
+    var _loop_1 = function (unspentTxOut) {
+        var txIn = _.find(txIns, function (aTxIn) {
             return aTxIn.txOutIndex === unspentTxOut.txOutIndex && aTxIn.txOutId === unspentTxOut.txOutId;
         });
         if (txIn === undefined) {
@@ -89,32 +90,35 @@ const filterTxPoolTxs = (unspentTxOuts, transactionPool) => {
         else {
             removable.push(unspentTxOut);
         }
+    };
+    for (var _i = 0, unspentTxOuts_1 = unspentTxOuts; _i < unspentTxOuts_1.length; _i++) {
+        var unspentTxOut = unspentTxOuts_1[_i];
+        _loop_1(unspentTxOut);
     }
-    return _.without(unspentTxOuts, ...removable);
+    return _.without.apply(_, [unspentTxOuts].concat(removable));
 };
-const createTransaction = (receiverAddress, amount, privateKey, unspentTxOuts, txPool) => {
+var createTransaction = function (receiverAddress, amount, privateKey, unspentTxOuts, txPool) {
     console.log('txPool: %s', JSON.stringify(txPool));
-    const myAddress = transaction_1.getPublicKey(privateKey);
-    const myUnspentTxOutsA = unspentTxOuts.filter((uTxO) => uTxO.address === myAddress);
-    const myUnspentTxOuts = filterTxPoolTxs(myUnspentTxOutsA, txPool);
+    var myAddress = transaction_1.getPublicKey(privateKey);
+    var myUnspentTxOutsA = unspentTxOuts.filter(function (uTxO) { return uTxO.address === myAddress; });
+    var myUnspentTxOuts = filterTxPoolTxs(myUnspentTxOutsA, txPool);
     // filter from unspentOutputs such inputs that are referenced in pool
-    const { includedUnspentTxOuts, leftOverAmount } = findTxOutsForAmount(amount, myUnspentTxOuts);
-    const toUnsignedTxIn = (unspentTxOut) => {
-        const txIn = new transaction_1.TxIn();
+    var _a = findTxOutsForAmount(amount, myUnspentTxOuts), includedUnspentTxOuts = _a.includedUnspentTxOuts, leftOverAmount = _a.leftOverAmount;
+    var toUnsignedTxIn = function (unspentTxOut) {
+        var txIn = new transaction_1.TxIn();
         txIn.txOutId = unspentTxOut.txOutId;
         txIn.txOutIndex = unspentTxOut.txOutIndex;
         return txIn;
     };
-    const unsignedTxIns = includedUnspentTxOuts.map(toUnsignedTxIn);
-    const tx = new transaction_1.Transaction();
+    var unsignedTxIns = includedUnspentTxOuts.map(toUnsignedTxIn);
+    var tx = new transaction_1.Transaction();
     tx.txIns = unsignedTxIns;
     tx.txOuts = createTxOuts(receiverAddress, myAddress, amount, leftOverAmount);
     tx.id = transaction_1.getTransactionId(tx);
-    tx.txIns = tx.txIns.map((txIn, index) => {
+    tx.txIns = tx.txIns.map(function (txIn, index) {
         txIn.signature = transaction_1.signTxIn(tx, index, privateKey, unspentTxOuts);
         return txIn;
     });
     return tx;
 };
 exports.createTransaction = createTransaction;
-//# sourceMappingURL=wallet.js.map

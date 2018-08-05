@@ -30,11 +30,13 @@ class UnspentTxOut {
 class Account {
     public readonly address: string;
     public balance: number;
+    public available: number;
     public txHistory: TxHistory[];
 
     constructor(address: string) {
         this.address = address;
         this.balance = 0;
+        this.available = 0;
         this.txHistory = [];
     }
 }
@@ -176,17 +178,13 @@ const validateTransaction = (transaction: Transaction, accounts: Account[]): boo
         console.log('The signature is invalid in tx: ' + transaction.id);
         return false;
     }
-    accSender = _.find(accounts, (acc: Account) => {return acc.address == transaction.sender});
-    if (transaction.amount > accSender.balance) {
-        console.log('The sender does not have enough coins. tx: ' + transaction.id);
-        return false;
-    }
     if (transaction.timestamp < (getCurrentTimestamp() - ACCOUNT_ACTIVE_PERIOD)){
         console.log('The transaction is too old. tx: ' + transaction.id);
         return false;
     }
+    accSender = _.find(accounts, (acc: Account) => {return acc.address == transaction.sender});
     if (_(accSender.txHistory).map((th: TxHistory) => th.id).includes(transaction.id)){
-        console.log('The transaction is duplicated. tx: ' + transaction.id);
+        console.log('The transaction is duplicated with the chain. tx: ' + transaction.id);
         return false;
     }
 
@@ -225,14 +223,26 @@ const validateBlockTransactions = (aTransactions: Transaction[], accounts: Accou
         console.log('invalid coinbase transaction: ' + JSON.stringify(coinbaseTx));
         return false;
     }
-    const txIds: number[] = _(aTransactions)
+    const txIds: string[] = _(aTransactions)
         .map((tx) => tx.id)
         .value();
 
     if (hasDuplicates(txIds)) {
+        console.log('Transactions in block are duplicated.');
         return false;
     }
 
+    for(var i=0; i < accounts.length; i++){
+        accounts[i].available = accounts[i].balance;
+    }
+    for(var j=0; j < aTransactions.length; j++){
+        accSender = findAccount(aTransactions[j].sender);
+        if (aTransactions[j].amount > accSender.available) {
+            console.log('The sender does not have enough coins. tx: ' + aTransactions[j].id);
+            return false;
+        }
+        accSender.available -=aTransactions[j].amount;
+    }
     // all but coinbase transactions
     const normalTransactions: Transaction[] = aTransactions.slice(1);
     return normalTransactions.map((tx) => validateTransaction(tx, accounts))
@@ -255,12 +265,12 @@ const hasDuplicates = (txIns: TxIn[]): boolean => {
         .includes(true);
 };
 */
-const hasDuplicates = (nums: number[]): boolean => {
-    const groups = _.countBy(nums);
+const hasDuplicates = (names: string[]): boolean => {
+    const groups = _.countBy(names);
     return _(groups)
         .map((value, key) => {
             if (value > 1) {
-                console.log('duplicate number: ' + key);
+                console.log('duplicate string: ' + key);
                 return true;
             } else {
                 return false;
@@ -643,7 +653,24 @@ export {
     Account, getCoinbaseTransaction, getPublicKey, hasDuplicates,
     Transaction
 };
-//signTxIn => signTransaction
+//
+//
+//Transaction
 //UnspentTxOut => Account
-//TxIn
-//TxOut
+//-TxIn
+//-TxOut
+//
+//signTxIn = (transaction: Transaction, txInIndex: number,
+//signTransaction = (transaction: Transaction, privateKey: string): string => {
+//
+//processTransactions = (aTransactions: Transaction[], aUnspentTxOuts: UnspentTxOut[], blockIndex: number)
+//processTransactions = (aTransactions: Transaction[], accounts: Account[])
+//
+//validateTransaction = (transaction: Transaction, aUnspentTxOuts: UnspentTxOut[]): boolean
+//validateTransaction = (transaction: Transaction, accounts: Account[]): boolean
+//
+//getCoinbaseTransaction = (address: string, blockIndex: number): Transaction
+//getCoinbaseTransaction = (miner: string): Transaction
+//
+//hasDuplicates = (txIns: TxIn[]): boolean
+//hasDuplicates = (nums: number[]): boolean

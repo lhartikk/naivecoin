@@ -1,9 +1,16 @@
 import * as CryptoJS from 'crypto-js';
 import * as _ from 'lodash';
 import {broadcastLatest, broadCastTransactionPool} from './p2p';
+
+/*
 import {
     getCoinbaseTransaction, isValidAddress, processTransactions, Transaction, UnspentTxOut
 } from './transaction';
+*/
+import {
+    getCoinbaseTransaction, isValidAddress, processTransactions, Transaction, Account, findAccount
+} from './transaction';
+
 import {addToTransactionPool, getTransactionPool, updateTransactionPool} from './transactionPool';
 import {hexToBinary} from './util';
 import {createTransaction, findUnspentTxOuts, getBalance, getPrivateFromWallet, getPublicFromWallet} from './wallet';
@@ -30,6 +37,7 @@ class Block {
     }
 }
 
+/*
 const genesisTransaction = {
     'txIns': [{'signature': '', 'txOutId': '', 'txOutIndex': 0}],
     'txOuts': [{
@@ -37,6 +45,15 @@ const genesisTransaction = {
         'amount': 50
     }],
     'id': 'e655f6a5f26dc9b4cac6e46f52336428287759cf81ef5ff10854f69d68f43fa3'
+};
+*/
+var stamp: number = getCurrentTimestamp();
+const genesisTransaction = {
+    'id': 'e655f6a5f26dc9b4cac6e46f52336428287759cf81ef5ff10854f69d68f43fa3',
+    'sender': 'coinbase',
+    'receiver': '04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a',
+    'amount': 50,
+    'timestamp': stamp
 };
 
 const genesisBlock: Block = new Block(
@@ -46,16 +63,24 @@ const genesisBlock: Block = new Block(
 let blockchain: Block[] = [genesisBlock];
 
 // the unspent txOut of genesis block is set to unspentTxOuts on startup
-let unspentTxOuts: UnspentTxOut[] = processTransactions(blockchain[0].data, [], 0);
+//let unspentTxOuts: UnspentTxOut[] = processTransactions(blockchain[0].data, []);
+let accounts: Account[] = processTransactions(blockchain[0].data);
 
 const getBlockchain = (): Block[] => blockchain;
 
-const getUnspentTxOuts = (): UnspentTxOut[] => _.cloneDeep(unspentTxOuts);
+//const getUnspentTxOuts = (): UnspentTxOut[] => _.cloneDeep(unspentTxOuts);
+const getAccounts = (): Account[] => _.cloneDeep(accounts);
 
 // and txPool should be only updated at the same time
+/*
 const setUnspentTxOuts = (newUnspentTxOut: UnspentTxOut[]) => {
     console.log('replacing unspentTxouts with: %s', newUnspentTxOut);
     unspentTxOuts = newUnspentTxOut;
+};
+*/
+const setAccounts = (newAccount: Account[]) => {
+    console.log('replacing accounts with: %s', newAccount);
+    accounts = newAccount;
 };
 
 const getLatestBlock = (): Block => blockchain[blockchain.length - 1];
@@ -106,16 +131,29 @@ const generateRawNextBlock = (blockData: Transaction[]) => {
 };
 
 // gets the unspent transaction outputs owned by the wallet
+/*
 const getMyUnspentTransactionOutputs = () => {
     return findUnspentTxOuts(getPublicFromWallet(), getUnspentTxOuts());
 };
+*/
+const getMyAccount = () => {
+    return findAccount(getPublicFromWallet(), getAccounts());
+};
 
+/*
 const generateNextBlock = () => {
     const coinbaseTx: Transaction = getCoinbaseTransaction(getPublicFromWallet(), getLatestBlock().index + 1);
     const blockData: Transaction[] = [coinbaseTx].concat(getTransactionPool());
     return generateRawNextBlock(blockData);
 };
+*/
+const generateNextBlock = () => {
+    const coinbaseTx: Transaction = getCoinbaseTransaction(getPublicFromWallet());
+    const blockData: Transaction[] = [coinbaseTx].concat(getTransactionPool());
+    return generateRawNextBlock(blockData);
+};
 
+/*
 const generatenextBlockWithTransaction = (receiverAddress: string, amount: number) => {
     if (!isValidAddress(receiverAddress)) {
         throw Error('invalid address');
@@ -125,6 +163,19 @@ const generatenextBlockWithTransaction = (receiverAddress: string, amount: numbe
     }
     const coinbaseTx: Transaction = getCoinbaseTransaction(getPublicFromWallet(), getLatestBlock().index + 1);
     const tx: Transaction = createTransaction(receiverAddress, amount, getPrivateFromWallet(), getUnspentTxOuts(), getTransactionPool());
+    const blockData: Transaction[] = [coinbaseTx, tx];
+    return generateRawNextBlock(blockData);
+};
+*/
+const generatenextBlockWithTransaction = (receiverAddress: string, amount: number) => {
+    if (!isValidAddress(receiverAddress)) {
+        throw Error('invalid address');
+    }
+    if (typeof amount !== 'number') {
+        throw Error('invalid amount');
+    }
+    const coinbaseTx: Transaction = getCoinbaseTransaction(getPublicFromWallet());
+    const tx: Transaction = createTransaction(receiverAddress, amount, getPrivateFromWallet(), getAccounts(), getTransactionPool());
     const blockData: Transaction[] = [coinbaseTx, tx];
     return generateRawNextBlock(blockData);
 };
@@ -140,13 +191,26 @@ const findBlock = (index: number, previousHash: string, timestamp: number, data:
     }
 };
 
+/*
 const getAccountBalance = (): number => {
     return getBalance(getPublicFromWallet(), getUnspentTxOuts());
 };
+*/
+const getAccountBalance = (): number => {
+    return getBalance(getPublicFromWallet(), getAccounts());
+};
 
+/*
 const sendTransaction = (address: string, amount: number): Transaction => {
     const tx: Transaction = createTransaction(address, amount, getPrivateFromWallet(), getUnspentTxOuts(), getTransactionPool());
     addToTransactionPool(tx, getUnspentTxOuts());
+    broadCastTransactionPool();
+    return tx;
+};
+*/
+const sendTransaction = (address: string, amount: number): Transaction => {
+    const tx: Transaction = createTransaction(address, amount, getPrivateFromWallet(), getAccounts(), getTransactionPool());
+    addToTransactionPool(tx, getAccounts());
     broadCastTransactionPool();
     return tx;
 };
@@ -225,6 +289,7 @@ const hashMatchesDifficulty = (hash: string, difficulty: number): boolean => {
 /*
     Checks if the given blockchain is valid. Return the unspent txOuts if the chain is valid
  */
+/*
 const isValidChain = (blockchainToValidate: Block[]): UnspentTxOut[] => {
     console.log('isValidChain:');
     console.log(JSON.stringify(blockchainToValidate));
@@ -235,10 +300,10 @@ const isValidChain = (blockchainToValidate: Block[]): UnspentTxOut[] => {
     if (!isValidGenesis(blockchainToValidate[0])) {
         return null;
     }
-    /*
-    Validate each block in the chain. The block is valid if the block structure is valid
-      and the transaction are valid
-     */
+    
+    //Validate each block in the chain. The block is valid if the block structure is valid
+    //  and the transaction are valid
+     
     let aUnspentTxOuts: UnspentTxOut[] = [];
 
     for (let i = 0; i < blockchainToValidate.length; i++) {
@@ -255,7 +320,39 @@ const isValidChain = (blockchainToValidate: Block[]): UnspentTxOut[] => {
     }
     return aUnspentTxOuts;
 };
+*/
+const isValidChain = (blockchainToValidate: Block[]): Account[] => {
+    console.log('isValidChain:');
+    console.log(JSON.stringify(blockchainToValidate));
+    const isValidGenesis = (block: Block): boolean => {
+        return JSON.stringify(block) === JSON.stringify(genesisBlock);
+    };
 
+    if (!isValidGenesis(blockchainToValidate[0])) {
+        return null;
+    }
+    /*
+    Validate each block in the chain. The block is valid if the block structure is valid
+      and the transaction are valid
+     */
+    let accts: Account[] = [];
+
+    for (let i = 0; i < blockchainToValidate.length; i++) {
+        const currentBlock: Block = blockchainToValidate[i];
+        if (i !== 0 && !isValidNewBlock(blockchainToValidate[i], blockchainToValidate[i - 1])) {
+            return null;
+        }
+
+        accts = processTransactions(currentBlock.data, accts);
+        if (accts === null) {
+            console.log('invalid transactions in blockchain');
+            return null;
+        }
+    }
+    return accts;
+};
+
+/*
 const addBlockToChain = (newBlock: Block): boolean => {
     if (isValidNewBlock(newBlock, getLatestBlock())) {
         const retVal: UnspentTxOut[] = processTransactions(newBlock.data, getUnspentTxOuts(), newBlock.index);
@@ -271,7 +368,24 @@ const addBlockToChain = (newBlock: Block): boolean => {
     }
     return false;
 };
+*/
+const addBlockToChain = (newBlock: Block): boolean => {
+    if (isValidNewBlock(newBlock, getLatestBlock())) {
+        const retVal: Account[] = processTransactions(newBlock.data, getAccounts());
+        if (retVal === null) {
+            console.log('block is not valid in terms of transactions');
+            return false;
+        } else {
+            blockchain.push(newBlock);
+            setAccounts(retVal);
+            updateTransactionPool(accounts);
+            return true;
+        }
+    }
+    return false;
+};
 
+/*
 const replaceChain = (newBlocks: Block[]) => {
     const aUnspentTxOuts = isValidChain(newBlocks);
     const validChain: boolean = aUnspentTxOuts !== null;
@@ -286,14 +400,50 @@ const replaceChain = (newBlocks: Block[]) => {
         console.log('Received blockchain invalid');
     }
 };
+*/
+const replaceChain = (newBlocks: Block[]) => {
+    const accts = isValidChain(newBlocks);
+    const validChain: boolean = accts !== null;
+    if (validChain &&
+        getAccumulatedDifficulty(newBlocks) > getAccumulatedDifficulty(getBlockchain())) {
+        console.log('Received blockchain is valid. Replacing current blockchain with received blockchain');
+        blockchain = newBlocks;
+        setAccounts(accts);
+        updateTransactionPool(accounts);
+        broadcastLatest();
+    } else {
+        console.log('Received blockchain invalid');
+    }
+};
 
+/*
 const handleReceivedTransaction = (transaction: Transaction) => {
     addToTransactionPool(transaction, getUnspentTxOuts());
 };
+*/
+const handleReceivedTransaction = (transaction: Transaction) => {
+    addToTransactionPool(transaction, getAccounts());
+};
 
+/*
 export {
     Block, getBlockchain, getUnspentTxOuts, getLatestBlock, sendTransaction,
     generateRawNextBlock, generateNextBlock, generatenextBlockWithTransaction,
     handleReceivedTransaction, getMyUnspentTransactionOutputs,
     getAccountBalance, isValidBlockStructure, replaceChain, addBlockToChain
 };
+*/
+export {
+    Block, getBlockchain, getAccounts, getLatestBlock, sendTransaction,
+    generateRawNextBlock, generateNextBlock, generatenextBlockWithTransaction,
+    handleReceivedTransaction, getMyAccount,
+    getAccountBalance, isValidBlockStructure, replaceChain, addBlockToChain
+};
+
+/*
+getUnspentTxOuts = (): UnspentTxOut[]
+getAccounts = (): Account[]
+
+getMyUnspentTransactionOutputs()
+getMyAccount()
+*/

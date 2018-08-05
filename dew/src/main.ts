@@ -1,12 +1,23 @@
 import * as  bodyParser from 'body-parser';
 import * as express from 'express';
 import * as _ from 'lodash';
+
+/*
 import {
     Block, generateNextBlock, generatenextBlockWithTransaction, generateRawNextBlock, getAccountBalance,
     getBlockchain, getMyUnspentTransactionOutputs, getUnspentTxOuts, sendTransaction
 } from './blockchain';
+*/
+import {
+    Block, generateNextBlock, generatenextBlockWithTransaction, generateRawNextBlock, getAccountBalance,
+    getBlockchain, getAccounts, getMyAccount, sendTransaction
+} from './blockchain';
+
 import {connectToPeers, getSockets, initP2PServer} from './p2p';
-import {UnspentTxOut} from './transaction';
+
+//import {UnspentTxOut} from './transaction';
+import {Account} from './transaction';
+
 import {getTransactionPool} from './transactionPool';
 import {getPublicFromWallet, initWallet} from './wallet';
 
@@ -40,18 +51,38 @@ const initHttpServer = (myHttpPort: number) => {
         res.send(tx);
     });
 
+    /*
     app.get('/address/:address', (req, res) => {
         const unspentTxOuts: UnspentTxOut[] =
             _.filter(getUnspentTxOuts(), (uTxO) => uTxO.address === req.params.address);
         res.send({'unspentTxOuts': unspentTxOuts});
     });
+    */
+    //redefined: obtain transaction history.
+    app.get('/address/:address', (req, res) => {
+        var acc: Account = findAccount(req.params.address, getAccounts);
+        if(acc==[]){
+        	res.send({'Error:': "address is wrong"});             
+        }
+        res.send({'accountTxHistory': acc.txHistory});
+    });
 
+    /*
     app.get('/unspentTransactionOutputs', (req, res) => {
         res.send(getUnspentTxOuts());
     });
+    */
+    app.get('/accounts', (req, res) => {
+        res.send(getAccounts());
+    });
 
+    /*
     app.get('/myUnspentTransactionOutputs', (req, res) => {
         res.send(getMyUnspentTransactionOutputs());
+    });
+    */
+    app.get('/myAccount', (req, res) => {
+        res.send(getMyAccount());
     });
 
     app.post('/mineRawBlock', (req, res) => {
