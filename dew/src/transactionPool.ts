@@ -63,6 +63,30 @@ const updateTransactionPool = (unspentTxOuts: UnspentTxOut[]) => {
 };
 */
 const updateTransactionPool = (accounts: Account[]) => {
+    const txIds: number[] = _(transactionPool)
+        .map((tx) => tx.id)
+        .value();
+
+    if (hasDuplicates(txIds)) {
+        console.log('Transactions in block are duplicated.');
+        return false;
+    }
+
+    for(var i=0; i < accounts.length; i++){
+        accounts[i].available = accounts[i].balance;
+    }
+    for(var j=0; j < aTransactions.length; j++){
+        accSender = findAccount(aTransactions[j].sender);
+        if (aTransactions[j].amount > accSender.available) {
+            console.log('The sender does not have enough coins. tx: ' + aTransactions[j].id);
+            return false;
+        }
+        accSender.available -=aTransactions[j].amount;
+    }
+    // all but coinbase transactions
+    const normalTransactions: Transaction[] = aTransactions.slice(1);
+    return normalTransactions.map((tx) => validateTransaction(tx, accounts))
+        .reduce((a, b) => (a && b), true);
     transactionPool = _(transactionPool).filter(tx => validateTransaction(tx, accounts));
 };
 
