@@ -8,12 +8,13 @@ import {
 } from './transaction';
 */
 import {
-    getCoinbaseTransaction, isValidAddress, processTransactions, Transaction, Account, findAccount
+    getCoinbaseTransaction, isValidAddress, processTransactions, Transaction, Account, findAccount, getTransactionId
 } from './transaction';
 
-import {addToTransactionPool, getTransactionPool, updateTransactionPool} from './transactionPool';
+import {addToTransactionPool, getTransactionPool, updateTransactionPool, updateTransactionPoolReplace} from './transactionPool';
 import {hexToBinary} from './util';
-import {createTransaction, findUnspentTxOuts, getBalance, getPrivateFromWallet, getPublicFromWallet} from './wallet';
+//import {createTransaction, findUnspentTxOuts, getBalance, getPrivateFromWallet, getPublicFromWallet} from './wallet';
+import {createTransaction, getBalance, getPrivateFromWallet, getPublicFromWallet} from './wallet';
 
 class Block {
 
@@ -37,6 +38,8 @@ class Block {
     }
 }
 
+const getCurrentTimestamp = (): number => Math.round(new Date().getTime() / 1000);
+
 /*
 const genesisTransaction = {
     'txIns': [{'signature': '', 'txOutId': '', 'txOutIndex': 0}],
@@ -47,14 +50,11 @@ const genesisTransaction = {
     'id': 'e655f6a5f26dc9b4cac6e46f52336428287759cf81ef5ff10854f69d68f43fa3'
 };
 */
-var stamp: number = getCurrentTimestamp();
-const genesisTransaction = {
-    'id': 'e655f6a5f26dc9b4cac6e46f52336428287759cf81ef5ff10854f69d68f43fa3',
-    'sender': 'coinbase',
-    'receiver': '04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a',
-    'amount': 50,
-    'timestamp': stamp
-};
+const genesisTransaction = new Transaction('coinbase',
+    '04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a', 50);
+genesisTransaction.timestamp = getCurrentTimestamp();
+genesisTransaction.id = getTransactionId(genesisTransaction);
+genesisTransaction.signature = '';
 
 const genesisBlock: Block = new Block(
     0, '91a73664bc84c0baa1fc75ea6e4aa6d1d20c5df664c724e3159aefc2e1186627', '', 1465154705, [genesisTransaction], 0, 0
@@ -64,12 +64,15 @@ let blockchain: Block[] = [genesisBlock];
 
 // the unspent txOut of genesis block is set to unspentTxOuts on startup
 //let unspentTxOuts: UnspentTxOut[] = processTransactions(blockchain[0].data, []);
-let accounts: Account[] = processTransactions(blockchain[0].data);
+let accounts: Account[] = processTransactions(blockchain[0].data, []);
 
 const getBlockchain = (): Block[] => blockchain;
 
 //const getUnspentTxOuts = (): UnspentTxOut[] => _.cloneDeep(unspentTxOuts);
-const getAccounts = (): Account[] => _.cloneDeep(accounts);
+//const getAccounts = (): Account[] => _.cloneDeep(accounts);
+const getAccounts = (): Account[] => accounts;
+
+
 
 // and txPool should be only updated at the same time
 /*
@@ -79,7 +82,7 @@ const setUnspentTxOuts = (newUnspentTxOut: UnspentTxOut[]) => {
 };
 */
 const setAccounts = (newAccount: Account[]) => {
-    console.log('replacing accounts with: %s', newAccount);
+    //console.log('replacing accounts with: %s', newAccount);
     accounts = newAccount;
 };
 
@@ -113,8 +116,7 @@ const getAdjustedDifficulty = (latestBlock: Block, aBlockchain: Block[]) => {
     }
 };
 
-const getCurrentTimestamp = (): number => Math.round(new Date().getTime() / 1000);
-
+////
 const generateRawNextBlock = (blockData: Transaction[]) => {
     const previousBlock: Block = getLatestBlock();
     const difficulty: number = getDifficulty(getBlockchain());
@@ -210,9 +212,14 @@ const sendTransaction = (address: string, amount: number): Transaction => {
 */
 const sendTransaction = (address: string, amount: number): Transaction => {
     const tx: Transaction = createTransaction(address, amount, getPrivateFromWallet(), getAccounts(), getTransactionPool());
-    addToTransactionPool(tx, getAccounts());
-    broadCastTransactionPool();
-    return tx;
+    if(tx == undefined){
+        console.log('This transaction cannot be created.');
+        return undefined;
+    }else{
+        addToTransactionPool(tx, getAccounts());
+        broadCastTransactionPool();
+        return tx;
+    }
 };
 
 const calculateHashForBlock = (block: Block): string =>
@@ -378,7 +385,8 @@ const addBlockToChain = (newBlock: Block): boolean => {
         } else {
             blockchain.push(newBlock);
             setAccounts(retVal);
-            updateTransactionPool(accounts);
+            //updateTransactionPool(accounts);
+            updateTransactionPool(newBlock.data);
             return true;
         }
     }
@@ -409,7 +417,7 @@ const replaceChain = (newBlocks: Block[]) => {
         console.log('Received blockchain is valid. Replacing current blockchain with received blockchain');
         blockchain = newBlocks;
         setAccounts(accts);
-        updateTransactionPool(accounts);
+        updateTransactionPoolReplace(accounts);
         broadcastLatest();
     } else {
         console.log('Received blockchain invalid');
@@ -437,7 +445,7 @@ export {
     Block, getBlockchain, getAccounts, getLatestBlock, sendTransaction,
     generateRawNextBlock, generateNextBlock, generatenextBlockWithTransaction,
     handleReceivedTransaction, getMyAccount,
-    getAccountBalance, isValidBlockStructure, replaceChain, addBlockToChain
+    getAccountBalance, isValidBlockStructure, replaceChain, addBlockToChain, getCurrentTimestamp
 };
 
 /*

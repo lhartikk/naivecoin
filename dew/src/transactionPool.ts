@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 
 //import {Transaction, TxIn, UnspentTxOut, validateTransaction} from './transaction';
-import {Transaction, Account, validateTransaction} from './transaction';
+import {Transaction, Account, findAccount, validateTransaction} from './transaction';
 
 let transactionPool: Transaction[] = [];
 
@@ -26,13 +26,13 @@ const addToTransactionPool = (tx: Transaction, unspentTxOuts: UnspentTxOut[]) =>
 const addToTransactionPool = (tx: Transaction, accounts: Account[]) => {
 
     if (!validateTransaction(tx, accounts)) {
-        throw Error('Trying to add invalid tx to pool');
+        throw Error('Trying to add invalid tx to pool. Tx: ' + tx.id);
     }
 
     if (!isValidTxForPool(tx, transactionPool, accounts)) {
-        throw Error('Trying to add invalid tx to pool');
+        throw Error('Tx is not valid for the pool, Tx: ' + tx.id);
     }
-    console.log('adding to txPool: %s', JSON.stringify(tx));
+    //console.log('adding to txPool: %s', JSON.stringify(tx));
     transactionPool.push(tx);
 };
 
@@ -62,32 +62,41 @@ const updateTransactionPool = (unspentTxOuts: UnspentTxOut[]) => {
     }
 };
 */
-const updateTransactionPool = (accounts: Account[]) => {
-    const txIds: number[] = _(transactionPool)
-        .map((tx) => tx.id)
-        .value();
+const updateTransactionPoolReplace = (accounts: Account[]) => {
+    var accSender;
 
-    if (hasDuplicates(txIds)) {
-        console.log('Transactions in block are duplicated.');
-        return false;
-    }
+    transactionPool = _(transactionPool).uniqBy('id').filter(tx => validateTransaction(tx, accounts)).value();
 
     for(var i=0; i < accounts.length; i++){
         accounts[i].available = accounts[i].balance;
     }
-    for(var j=0; j < aTransactions.length; j++){
-        accSender = findAccount(aTransactions[j].sender);
-        if (aTransactions[j].amount > accSender.available) {
-            console.log('The sender does not have enough coins. tx: ' + aTransactions[j].id);
-            return false;
+    const invalidTxs = [];
+    for (const tx of transactionPool) {
+        accSender = findAccount(tx.sender, accounts);
+        if(accSender == undefined){
+        	console.log('updateTransactionPool: no account found.');
+        	return false;
         }
-        accSender.available -=aTransactions[j].amount;
+        if (tx.amount > accSender.available) {
+            console.log('The sender does not have enough coins. Transaction be removed from pool. tx: ' + tx.id);
+            invalidTxs.push(tx);
+        }else{
+            accSender.available -=tx.amount;
+        }
     }
-    // all but coinbase transactions
-    const normalTransactions: Transaction[] = aTransactions.slice(1);
-    return normalTransactions.map((tx) => validateTransaction(tx, accounts))
-        .reduce((a, b) => (a && b), true);
-    transactionPool = _(transactionPool).filter(tx => validateTransaction(tx, accounts));
+    if (invalidTxs.length > 0) {
+        console.log('removing the following transactions from txPool: %s', JSON.stringify(invalidTxs));
+        transactionPool = _.without(transactionPool, ...invalidTxs);
+    }
+};
+const updateTransactionPool = (transactions: Transaction[]) => {
+    //console.log('tansactionPool:  '+JSON.stringify(transactionPool));
+    if (transactions.length > 0) {
+        //console.log('removing the following transactions from txPool: %s', JSON.stringify(transactions));
+        var txIDs: string[] = _.map(transactions, (tx: Transaction) => tx.id); 
+        transactionPool = _.filter(transactionPool, (tx: Transaction) => !_.includes(txIDs, tx.id));
+    }
+    //console.log('tansactionPool:  '+JSON.stringify(transactionPool));
 };
 
 /*
@@ -118,22 +127,40 @@ const isValidTxForPool = (tx: Transaction, aTtransactionPool: Transaction[]): bo
     return true;
 };
 */
-const isValidTxForPool = (tx: Transaction, aTtransactionPool: Transaction[]): boolean => {
-    const txPoolIns: TxIn[] = getTxPoolIns(aTtransactionPool);
+// This transaction tx has been validated in another function. id duplicate was checked in validation.
+const isValidTxForPool = (tx: Transaction, aTransactionPool: Transaction[], accounts: Account[]): boolean => {
+    var accSender: Account;
 
-    const containsTxIn = (txIns: TxIn[], txIn: TxIn) => {
-        return _.find(txPoolIns, ((txPoolIn) => {
-            return txIn.txOutIndex === txPoolIn.txOutIndex && txIn.txOutId === txPoolIn.txOutId;
-        }));
-    };
-
-    for (const txIn of tx.txIns) {
-        if (containsTxIn(txPoolIns, txIn)) {
-            console.log('txIn already found in the txPool');
+    for(var i=0; i < accounts.length; i++){
+        accounts[i].available = accounts[i].balance;
+    }
+    for (const trx of aTransactionPool) {
+        if(tx.id == trx.id){
+            console.log('The transaction is duplicated with the existing transaction pool. trx: ' + trx.id);
             return false;
         }
+        accSender = findAccount(trx.sender, accounts);
+        if(accSender == undefined){
+        	console.log('isValideTxFor Pool: no account found.');
+        	return false;
+    	  }
+       if (trx.amount > accSender.available) {
+            console.log('The sender does not have enough coins. The existing transaction pool has problems. trx: ' + trx.id);
+            return false;
+        }else{
+            accSender.available -= trx.amount;
+        }
+    }
+    accSender = findAccount(tx.sender, accounts);
+    if(accSender == undefined){
+        console.log('isValidTxForPool: no account found.');
+        return false;
+    }
+    if (tx.amount > accSender.available) {
+        console.log('The transaction is not valid for the pool. tx: ' + tx.id);
+        return false;
     }
     return true;
 };
 
-export {addToTransactionPool, getTransactionPool, updateTransactionPool};
+export {addToTransactionPool, getTransactionPool, updateTransactionPool, updateTransactionPoolReplace};

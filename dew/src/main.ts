@@ -10,13 +10,13 @@ import {
 */
 import {
     Block, generateNextBlock, generatenextBlockWithTransaction, generateRawNextBlock, getAccountBalance,
-    getBlockchain, getAccounts, getMyAccount, sendTransaction
+    getBlockchain, getMyAccount, getAccounts, sendTransaction
 } from './blockchain';
 
 import {connectToPeers, getSockets, initP2PServer} from './p2p';
 
 //import {UnspentTxOut} from './transaction';
-import {Account} from './transaction';
+import {Account, findAccount} from './transaction';
 
 import {getTransactionPool} from './transactionPool';
 import {getPublicFromWallet, initWallet} from './wallet';
@@ -58,13 +58,12 @@ const initHttpServer = (myHttpPort: number) => {
         res.send({'unspentTxOuts': unspentTxOuts});
     });
     */
-    //redefined: obtain transaction history.
-    app.get('/address/:address', (req, res) => {
-        var acc: Account = findAccount(req.params.address, getAccounts);
-        if(acc==[]){
+    app.get('/account/:address', (req, res) => {
+        var acc: Account = findAccount(req.params.address, getAccounts());
+        if(acc == undefined){
         	res.send({'Error:': "address is wrong"});             
         }
-        res.send({'accountTxHistory': acc.txHistory});
+        res.send({'Account': acc});
     });
 
     /*
@@ -72,6 +71,7 @@ const initHttpServer = (myHttpPort: number) => {
         res.send(getUnspentTxOuts());
     });
     */
+    //display all accounts
     app.get('/accounts', (req, res) => {
         res.send(getAccounts());
     });
@@ -81,8 +81,13 @@ const initHttpServer = (myHttpPort: number) => {
         res.send(getMyUnspentTransactionOutputs());
     });
     */
-    app.get('/myAccount', (req, res) => {
-        res.send(getMyAccount());
+    app.get('/myaccount', (req, res) => {
+        var acc: Account = findAccount(getPublicFromWallet(), getAccounts());
+        if(acc == undefined){
+           	res.send({'Error': 'No account was found.'})
+        }else{
+        	res.send({'My Account': acc});
+        }
     });
 
     app.post('/mineRawBlock', (req, res) => {
@@ -107,12 +112,16 @@ const initHttpServer = (myHttpPort: number) => {
         }
     });
 
-    app.get('/balance', (req, res) => {
-        const balance: number = getAccountBalance();
-        res.send({'balance': balance});
+    app.get('/mybalance', (req, res) => {
+        var acc: Account = findAccount(getPublicFromWallet(), getAccounts());
+        if(acc == undefined){
+        	res.send({'Error:': "No such account."});             
+        }else{
+       	res.send({'Balance': acc.balance});
+        }
     });
 
-    app.get('/address', (req, res) => {
+    app.get('/myaddress', (req, res) => {
         const address: string = getPublicFromWallet();
         res.send({'address': address});
     });
@@ -145,14 +154,14 @@ const initHttpServer = (myHttpPort: number) => {
         }
     });
 
-    app.get('/transactionPool', (req, res) => {
+    app.get('/transactionpool', (req, res) => {
         res.send(getTransactionPool());
     });
 
     app.get('/peers', (req, res) => {
         res.send(getSockets().map((s: any) => s._socket.remoteAddress + ':' + s._socket.remotePort));
     });
-    app.post('/addPeer', (req, res) => {
+    app.post('/addpeer', (req, res) => {
         connectToPeers(req.body.peer);
         res.send();
     });
