@@ -170,6 +170,8 @@ const generatenextBlockWithTransaction = (receiverAddress: string, amount: numbe
 };
 */
 const generatenextBlockWithTransaction = (receiverAddress: string, amount: number) => {
+    var blockData: Transaction[];
+ 
     if (!isValidAddress(receiverAddress)) {
         throw Error('invalid address');
     }
@@ -178,7 +180,12 @@ const generatenextBlockWithTransaction = (receiverAddress: string, amount: numbe
     }
     const coinbaseTx: Transaction = getCoinbaseTransaction(getPublicFromWallet());
     const tx: Transaction = createTransaction(receiverAddress, amount, getPrivateFromWallet(), getAccounts(), getTransactionPool());
-    const blockData: Transaction[] = [coinbaseTx, tx];
+    if(tx == undefined){
+        blockData = [coinbaseTx];
+        console.log('The transaction is invalid. The block was mined.');
+    }else{
+        blockData = [coinbaseTx, tx];
+    }
     return generateRawNextBlock(blockData);
 };
 
