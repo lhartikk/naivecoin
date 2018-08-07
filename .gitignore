@@ -9,3 +9,7 @@ dew/.idea
 dew/src/*.js
 dew/src/*.map
 
+*.js
+*.map
+*.js
+*.map
