@@ -51,13 +51,18 @@ const genesisTransaction = {
 };
 */
 const genesisTransaction = new Transaction('coinbase',
-    '04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a', 50);
-genesisTransaction.timestamp = getCurrentTimestamp();
+    '04c0a0903203a721fa43581cc53c9361862e2e5522310909fbfbf14203371c464f5bdbba42e16349e237e1adf65952d8301e071a40a76b1709954c8f0e3f253b2c', 50);
+genesisTransaction.timestamp = 1533641911;
 genesisTransaction.id = getTransactionId(genesisTransaction);
 genesisTransaction.signature = '';
 
+/*
 const genesisBlock: Block = new Block(
     0, '91a73664bc84c0baa1fc75ea6e4aa6d1d20c5df664c724e3159aefc2e1186627', '', 1465154705, [genesisTransaction], 0, 0
+);
+*/
+const genesisBlock: Block = new Block(
+    0, '91a73664bc84c0baa1fc75ea6e4aa6d1d20c5df664c724e3159aefc2e1186627', '', 1533641911, [genesisTransaction], 0, 0
 );
 
 let blockchain: Block[] = [genesisBlock];
@@ -437,6 +442,7 @@ const handleReceivedTransaction = (transaction: Transaction) => {
 };
 */
 const handleReceivedTransaction = (transaction: Transaction) => {
+//console.log('***handleReceivedTransacton:***');
     addToTransactionPool(transaction, getAccounts());
 };
 

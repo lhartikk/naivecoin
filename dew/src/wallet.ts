@@ -2,7 +2,7 @@ import {ec} from 'elliptic';
 import {existsSync, readFileSync, unlinkSync, writeFileSync} from 'fs';
 import * as _ from 'lodash';
 //import {getPublicKey, getTransactionId, signTxIn, Transaction, TxIn, TxOut, UnspentTxOut} from './transaction';
-import {getPublicKey, getTransactionId, signTransaction, Transaction, Account, findAccount, createAccount} from './transaction';
+import {getPublicKey, getTransactionId, signTransaction, Transaction, Account, findAccount, existAccount, createAccount} from './transaction';
 
 //dewcoin
 import {getCurrentTimestamp, getAccounts} from './blockchain';
@@ -28,7 +28,9 @@ const generatePrivateKey = (): string => {
 };
 
 const initWallet = () => {
-    createAccount(getPublicFromWallet(), getAccounts());
+    if (!existAccount(getPublicFromWallet(), getAccounts())) {
+        createAccount(getPublicFromWallet(), getAccounts());
+    }
     console.log('an account was created.');
     // let's not override existing private keys
     if (existsSync(privateKeyLocation)) {

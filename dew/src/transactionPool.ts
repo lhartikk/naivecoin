@@ -131,6 +131,8 @@ const isValidTxForPool = (tx: Transaction, aTtransactionPool: Transaction[]): bo
 const isValidTxForPool = (tx: Transaction, aTransactionPool: Transaction[], accounts: Account[]): boolean => {
     var accSender: Account;
 
+//console.log('isValidForPool: a Pool: ' + JSON.stringify(aTransactionPool));
+//console.log('tx:  ' + JSON.stringify(tx));
     for(var i=0; i < accounts.length; i++){
         accounts[i].available = accounts[i].balance;
     }

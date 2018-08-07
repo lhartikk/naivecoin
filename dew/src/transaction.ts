@@ -152,6 +152,8 @@ const validateTransaction = (transaction: Transaction, aUnspentTxOuts: UnspentTx
 };
 */
 const existAccount = (address: string, accounts: Account[]): boolean => {
+    //console.log('address: ' + address);
+    //console.log('accounts: '+ JSON.stringify(accounts));
     return _(accounts).map((acc: Account) => acc.address).includes(address);
 }
 const createAccount = (address: string, accounts: Account[]): boolean => {
@@ -673,7 +675,7 @@ export {
 */
 export {
     processTransactions, signTransaction, getTransactionId, isValidAddress, validateTransaction,
-    Account, findAccount, createAccount, getCoinbaseTransaction, getPublicKey, hasDuplicates,
+    Account, findAccount, existAccount, createAccount, getCoinbaseTransaction, getPublicKey, hasDuplicates,
     Transaction
 };
 //
