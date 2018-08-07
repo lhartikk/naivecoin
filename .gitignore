@@ -1,15 +1,10 @@
 cloud/node_modules
 cloud/npm-debug.log
-cloud/.idea
 cloud/src/*.js
 cloud/src/*.map
 dew/node_modules
 dew/npm-debug.log
-dew/.idea
 dew/src/*.js
 dew/src/*.map
 
-*.js
-*.map
-*.js
-*.map
+
