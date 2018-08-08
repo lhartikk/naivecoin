@@ -13,13 +13,19 @@ import {
     getBlockchain, getMyAccount, getAccounts, sendTransaction
 } from './blockchain';
 
-import {connectToPeers, getSockets, initP2PServer} from './p2p';
+//import {connectToPeers, getSockets, initP2PServer} from './p2p';
+import {connectToPeers, getSockets, initP2PServer, setModeLocal, setModeDew} from './p2p';
 
 //import {UnspentTxOut} from './transaction';
 import {Account, findAccount} from './transaction';
 
+//dewcoin
+import {getMode} from './config';
+
 import {getTransactionPool} from './transactionPool';
 import {getPublicFromWallet, initWallet} from './wallet';
+
+var mode:string = 'dew';
 
 const httpPort: number = parseInt(process.env.HTTP_PORT) || 3001;
 const p2pPort: number = parseInt(process.env.P2P_PORT) || 6001;
@@ -34,8 +40,25 @@ const initHttpServer = (myHttpPort: number) => {
         }
     });
 
+    app.get('/setmodelocal', (req, res) => {
+        setModeLocal();
+        mode = getMode();
+        res.send('The system is in ' + mode + ' mode.');
+    });
+
+    app.get('/setmodedew', (req, res) => {
+        setModeDew();
+        mode = getMode();
+        res.send('The system is in ' + mode + ' mode.');
+    });
+
     app.get('/blocks', (req, res) => {
-        res.send(getBlockchain());
+        mode = getMode();
+        if(mode == 'local'){
+	        res.send(getBlockchain());
+        }else if(mode == 'dew'){
+	        res.send('This request is not available in dew mode.');
+        }
     });
 
     app.get('/block/:hash', (req, res) => {
