@@ -13,7 +13,8 @@ import {
     getBlockchain, getMyAccount, getAccounts, sendTransaction
 } from './blockchain';
 
-import {connectToPeers, getSockets, initP2PServer} from './p2p';
+//import {connectToPeers, getSockets, initP2PServer} from './p2p';
+import {connectToPeers, getSockets, initP2PServer, getDewAddress, setDewAddress} from './p2p';
 
 //import {UnspentTxOut} from './transaction';
 import {Account, findAccount} from './transaction';
@@ -32,6 +33,12 @@ const initHttpServer = (myHttpPort: number) => {
         if (err) {
             res.status(400).send(err.message);
         }
+    });
+
+    app.post('/SetDewAddress', (req, res) => {
+        setDewAddress(req.body.address);
+        console.log('Dew address: ' + getDewAddress());
+        res.send();
     });
 
     app.get('/blocks', (req, res) => {

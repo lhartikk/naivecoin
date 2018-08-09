@@ -384,7 +384,8 @@ const setModeDew = () => {
     		//sockets.push(wsCloud);
     		initCloudMessageHandler(wsCloud);
 
-    		//write(wsCloud, queryChainLengthMsg());
+    		//write(wsCloud, {'type': 5, 'data': null});
+    		write(wsCloud, queryChainLengthMsg());
     		// query transactions pool only some time after chain query
     		//setTimeout(() => {
         	//broadcast(queryTransactionPoolMsg());

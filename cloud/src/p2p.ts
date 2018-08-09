@@ -13,6 +13,9 @@ const getSockets = () => sockets;
 //dewcoin
 var wsCloud: WebSocket;
 var dewAddress: string = '127.0.0.1';
+const getDewAddress = () => {
+	return dewAddress;
+}
 const setDewAddress = (address: string) => {
 	dewAddress = address;
 }
@@ -23,15 +26,13 @@ enum MessageType {
     QUERY_ALL = 1,
     RESPONSE_BLOCKCHAIN = 2,
     QUERY_TRANSACTION_POOL = 3,
-    RESPONSE_TRANSACTION_POOL = 4,
-    DEW_CONNECTION =5
+    RESPONSE_TRANSACTION_POOL = 4
 }
 
 class Message {
     public type: MessageType;
     public data: any;
 }
-
 
 
 /*
@@ -112,6 +113,59 @@ const JSONToObject = <T>(data: string): T => {
     }
 };
 
+/*
+const initMessageHandler = (ws: WebSocket) => {
+    ws.on('message', (data: string) => {
+
+        try {
+            const message: Message = JSONToObject<Message>(data);
+            if (message === null) {
+                console.log('could not parse received JSON message: ' + data);
+                return;
+            }
+            console.log('Received message: %s', JSON.stringify(message));
+            switch (message.type) {
+                case MessageType.QUERY_LATEST:
+                    write(ws, responseLatestMsg());
+                    break;
+                case MessageType.QUERY_ALL:
+                    write(ws, responseChainMsg());
+                    break;
+                case MessageType.RESPONSE_BLOCKCHAIN:
+                    const receivedBlocks: Block[] = JSONToObject<Block[]>(message.data);
+                    if (receivedBlocks === null) {
+                        console.log('invalid blocks received: %s', JSON.stringify(message.data));
+                        break;
+                    }
+                    handleBlockchainResponse(receivedBlocks);
+                    break;
+                case MessageType.QUERY_TRANSACTION_POOL:
+                    write(ws, responseTransactionPoolMsg());
+                    break;
+                case MessageType.RESPONSE_TRANSACTION_POOL:
+                    const receivedTransactions: Transaction[] = JSONToObject<Transaction[]>(message.data);
+                    if (receivedTransactions === null) {
+                        console.log('invalid transaction received: %s', JSON.stringify(message.data));
+                        break;
+                    }
+                    receivedTransactions.forEach((transaction: Transaction) => {
+                        try {
+                            handleReceivedTransaction(transaction);
+                            // if no error is thrown, transaction was indeed added to the pool
+                            // let's broadcast transaction pool
+                            broadCastTransactionPool();
+                        } catch (e) {
+                            console.log(e.message);
+                        }
+                    });
+                    break;
+            }
+        } catch (e) {
+            console.log(e);
+        }
+    });
+};
+*/
 const initMessageHandler = (ws: WebSocket) => {
     ws.on('message', (data: string) => {
 
@@ -303,4 +357,4 @@ const broadCastTransactionPool = () => {
     broadcast(responseTransactionPoolMsg());
 };
 
-export {connectToPeers, broadcastLatest, broadCastTransactionPool, initP2PServer, getSockets};
+export {connectToPeers, broadcastLatest, broadCastTransactionPool, initP2PServer, getSockets, getDewAddress, setDewAddress};
