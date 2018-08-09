@@ -8,13 +8,23 @@ import {Transaction} from './transaction';
 import {getTransactionPool} from './transactionPool';
 
 const sockets: WebSocket[] = [];
+const getSockets = () => sockets;
+
+//dewcoin
+var wsCloud: WebSocket;
+var dewAddress: string = '127.0.0.1';
+const setDewAddress = (address: string) => {
+	dewAddress = address;
+}
+
 
 enum MessageType {
     QUERY_LATEST = 0,
     QUERY_ALL = 1,
     RESPONSE_BLOCKCHAIN = 2,
     QUERY_TRANSACTION_POOL = 3,
-    RESPONSE_TRANSACTION_POOL = 4
+    RESPONSE_TRANSACTION_POOL = 4,
+    DEW_CONNECTION =5
 }
 
 class Message {
@@ -22,6 +32,9 @@ class Message {
     public data: any;
 }
 
+
+
+/*
 const initP2PServer = (p2pPort: number) => {
     const server: Server = new WebSocket.Server({port: p2pPort});
     server.on('connection', (ws: WebSocket) => {
@@ -29,9 +42,22 @@ const initP2PServer = (p2pPort: number) => {
     });
     console.log('listening websocket p2p port on: ' + p2pPort);
 };
+*/
+const initP2PServer = (p2pPort: number) => {
+    const server: Server = new WebSocket.Server({port: p2pPort});
+    server.on('connection', (ws: WebSocket, req) => {
+        console.log('New websocket connection from %s:%d', req.connection.remoteAddress.substring(7), req.connection.remotePort);
+        if(req.connection.remoteAddress.substring(7) == dewAddress){
+            initCloudConnection(ws);
+        }else{
+            initConnection(ws);
+        }
+    });
+    console.log('listening websocket p2p port on: ' + p2pPort);
+};
 
-const getSockets = () => sockets;
 
+/*
 const initConnection = (ws: WebSocket) => {
     sockets.push(ws);
     initMessageHandler(ws);
@@ -43,6 +69,39 @@ const initConnection = (ws: WebSocket) => {
         broadcast(queryTransactionPoolMsg());
     }, 500);
 };
+*/
+const initConnection = (ws: WebSocket) => {
+    sockets.push(ws);
+    initMessageHandler(ws);
+    initErrorHandler(ws);
+    write(ws, queryChainLengthMsg());
+
+    // query transactions pool only some time after chain query
+    setTimeout(() => {
+        broadcast(queryTransactionPoolMsg());
+    }, 500);
+};
+
+
+const initCloudConnection = (ws: WebSocket) => {
+    console.log('Dew sent in connection.');
+    wsCloud = ws;
+    initCloudMessageHandler(wsCloud);
+    wsCloud.on('error', () => {
+	   console.log('connection with the dew failed');
+    });
+    wsCloud.on('close', () => {
+        console.log('connection with the dew was closed');
+    });
+   
+    write(wsCloud, queryChainLengthMsg());
+    // query transactions pool only some time after chain query
+    //setTimeout(() => {
+    //    broadcast(queryTransactionPoolMsg());
+    //}, 500);
+};
+
+
 
 const JSONToObject = <T>(data: string): T => {
     try {
@@ -105,6 +164,61 @@ const initMessageHandler = (ws: WebSocket) => {
         console.log('message processing]');
     });
 };
+
+
+const initCloudMessageHandler = (ws: WebSocket) => {
+    ws.on('message', (data: string) => {
+	   
+        try {
+            const message: Message = JSONToObject<Message>(data);
+            if (message === null) {
+                console.log('could not parse received JSON message: ' + data);
+                return;
+            }
+            console.log('[Received cloud message: %s', JSON.stringify(message));
+            switch (message.type) {
+                case MessageType.QUERY_LATEST:
+                    write(ws, responseLatestMsg());
+                    break;
+                case MessageType.QUERY_ALL:
+                    write(ws, responseChainMsg());
+                    break;
+                case MessageType.RESPONSE_BLOCKCHAIN:
+                    const receivedBlocks: Block[] = JSONToObject<Block[]>(message.data);
+                    if (receivedBlocks === null) {
+                        console.log('invalid blocks received: %s', JSON.stringify(message.data));
+                        break;
+                    }
+                    handleBlockchainResponse(receivedBlocks);
+                    break;
+                case MessageType.QUERY_TRANSACTION_POOL:
+                    write(ws, responseTransactionPoolMsg());
+                    break;
+                case MessageType.RESPONSE_TRANSACTION_POOL:
+                    const receivedTransactions: Transaction[] = JSONToObject<Transaction[]>(message.data);
+                    if (receivedTransactions === null) {
+                        console.log('invalid transaction received: %s', JSON.stringify(message.data));
+                        break;
+                    }
+                    receivedTransactions.forEach((transaction: Transaction) => {
+                        try {
+                            handleReceivedTransaction(transaction);
+                            // if no error is thrown, transaction was indeed added to the pool
+                            // let's broadcast transaction pool
+                            broadCastTransactionPool();
+                        } catch (e) {
+                            console.log(e.message);
+                        }
+                    });
+                    break;
+            }
+        } catch (e) {
+            console.log(e);
+        }
+        console.log('Cloud message processing]');
+    });
+};
+
 
 const write = (ws: WebSocket, message: Message): void => ws.send(JSON.stringify(message));
 const broadcast = (message: Message): void => sockets.forEach((socket) => write(socket, message));

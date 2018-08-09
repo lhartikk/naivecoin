@@ -1,4 +1,4 @@
-var mode: string = 'local';
+var mode: string = 'dew';
 var cloudServer = 'localhost:7001';
 
 
