@@ -97,9 +97,10 @@ const initCloudConnection = (ws: WebSocket) => {
    
     write(wsCloud, queryChainLengthMsg());
     // query transactions pool only some time after chain query
-    //setTimeout(() => {
-    //    broadcast(queryTransactionPoolMsg());
-    //}, 500);
+    setTimeout(() => {
+        write(wsCloud, queryTransactionPoolMsg());
+        //broadcast(queryTransactionPoolMsg());
+    }, 500);
 };
 
 
@@ -275,7 +276,13 @@ const initCloudMessageHandler = (ws: WebSocket) => {
 
 
 const write = (ws: WebSocket, message: Message): void => ws.send(JSON.stringify(message));
-const broadcast = (message: Message): void => sockets.forEach((socket) => write(socket, message));
+//const broadcast = (message: Message): void => sockets.forEach((socket) => write(socket, message));
+const broadcast = (message: Message): void => {
+	sockets.forEach((socket) => write(socket, message));
+	if(wsCloud.readyState == 1){
+		write(wsCloud, message);
+	}
+}
 
 const queryChainLengthMsg = (): Message => ({'type': MessageType.QUERY_LATEST, 'data': null});
 

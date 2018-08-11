@@ -1,7 +1,13 @@
 import * as WebSocket from 'ws';
 import {Server} from 'ws';
+/*
 import {
     addBlockToChain, Block, getBlockchain, getLatestBlock, handleReceivedTransaction, isValidBlockStructure,
+    replaceChain
+} from './blockchain';
+*/
+import {
+    addBlockToChain, Block, getBlockchain, resetBlockchain, getLatestBlock, handleReceivedTransaction, isValidBlockStructure,
     replaceChain
 } from './blockchain';
 import {Transaction} from './transaction';
@@ -11,6 +17,7 @@ import {getTransactionPool} from './transactionPool';
 import {getMode, setMode, getCloud} from './config';
 let mode: string;
 let wsCloud: WebSocket;
+const getWsCloud = (): WebSocket => wsCloud;
 
 const sockets: WebSocket[] = [];
 
@@ -39,6 +46,7 @@ const initP2PServer = (p2pPort: number) => {
 const initP2PServer = (p2pPort: number) => {
     const server: Server = new WebSocket.Server({port: p2pPort});
     server.on('connection', (ws: WebSocket) => {
+        //incoming connections.
         initConnection(ws);
     });
     console.log('listening websocket p2p port on: ' + p2pPort);
@@ -52,6 +60,7 @@ const initP2PServer = (p2pPort: number) => {
 };
 
 const getSockets = () => sockets;
+
 
 const initConnection = (ws: WebSocket) => {
     sockets.push(ws);
@@ -240,7 +249,14 @@ const initCloudMessageHandler = (ws: WebSocket) => {
 
 
 const write = (ws: WebSocket, message: Message): void => ws.send(JSON.stringify(message));
-const broadcast = (message: Message): void => sockets.forEach((socket) => write(socket, message));
+//const broadcast = (message: Message): void => sockets.forEach((socket) => write(socket, message));
+const broadcast = (message: Message): void => {
+	sockets.forEach((socket) => write(socket, message));
+	mode = getMode();
+	if(mode == 'dew'){
+		write(wsCloud, message);
+	}
+}
 
 const queryChainLengthMsg = (): Message => ({'type': MessageType.QUERY_LATEST, 'data': null});
 
@@ -349,13 +365,15 @@ const setModeDew = () => {
         	console.log('connection with the cloud established');
     		//sockets.push(wsCloud);
     		initCloudMessageHandler(wsCloud);
+           resetBlockchain();
 
     		//write(wsCloud, {'type': 5, 'data': null});
-		broadcast(queryChainLengthMsg());
+		//broadcast(queryChainLengthMsg());
     		write(wsCloud, queryChainLengthMsg());
     		//query transactions pool only some time after chain query
     		setTimeout(() => {
-        		broadcast(queryTransactionPoolMsg());
+    		     write(wsCloud, queryTransactionPoolMsg());
+        		//broadcast(queryTransactionPoolMsg());
     		}, 500);
     	});
     	wsCloud.on('error', () => {
@@ -369,4 +387,5 @@ const setModeDew = () => {
 
 
 //export {connectToPeers, broadcastLatest, broadCastTransactionPool, initP2PServer, getSockets};
-export {connectToPeers, broadcastLatest, broadCastTransactionPool, initP2PServer, getSockets, setModeLocal, setModeDew};
+export {connectToPeers, broadcastLatest, broadCastTransactionPool, initP2PServer, getSockets, 
+setModeLocal, setModeDew};

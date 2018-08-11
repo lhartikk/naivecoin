@@ -548,7 +548,7 @@ export {
 };
 */
 export {
-    Block, getBlockchain, getAccounts, getLatestBlock, sendTransaction,
+    Block, getBlockchain, resetBlockchain, getAccounts, getLatestBlock, sendTransaction,
     generateRawNextBlock, generateNextBlock, generatenextBlockWithTransaction,
     handleReceivedTransaction, getMyAccount,
     getAccountBalance, isValidBlockStructure, replaceChain, addBlockToChain, getCurrentTimestamp
