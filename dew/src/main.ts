@@ -25,7 +25,7 @@ import {getMode} from './config';
 import {getTransactionPool} from './transactionPool';
 import {getPublicFromWallet, initWallet} from './wallet';
 
-var mode:string = 'dew';
+let mode:string = 'dew';
 
 const httpPort: number = parseInt(process.env.HTTP_PORT) || 3001;
 const p2pPort: number = parseInt(process.env.P2P_PORT) || 6001;
@@ -54,11 +54,11 @@ const initHttpServer = (myHttpPort: number) => {
 
     app.get('/blocks', (req, res) => {
         mode = getMode();
-        if(mode == 'local'){
+        //if(mode == 'local'){
 	        res.send(getBlockchain());
-        }else if(mode == 'dew'){
-	        res.send('This request is not available in dew mode.');
-        }
+        //}else if(mode == 'dew'){
+	   //     res.send('This request is not available in dew mode.');
+        //}
     });
 
     app.get('/block/:hash', (req, res) => {
@@ -82,7 +82,7 @@ const initHttpServer = (myHttpPort: number) => {
     });
     */
     app.get('/account/:address', (req, res) => {
-        var acc: Account = findAccount(req.params.address, getAccounts());
+        let acc: Account = findAccount(req.params.address, getAccounts());
         if(acc == undefined){
         	res.send({'Error:': "address is wrong"});             
         }
@@ -105,7 +105,7 @@ const initHttpServer = (myHttpPort: number) => {
     });
     */
     app.get('/myaccount', (req, res) => {
-        var acc: Account = findAccount(getPublicFromWallet(), getAccounts());
+        let acc: Account = findAccount(getPublicFromWallet(), getAccounts());
         if(acc == undefined){
            	res.send({'Error': 'No account was found.'})
         }else{
@@ -136,7 +136,7 @@ const initHttpServer = (myHttpPort: number) => {
     });
 
     app.get('/mybalance', (req, res) => {
-        var acc: Account = findAccount(getPublicFromWallet(), getAccounts());
+        let acc: Account = findAccount(getPublicFromWallet(), getAccounts());
         if(acc == undefined){
         	res.send({'Error:': "No such account."});             
         }else{

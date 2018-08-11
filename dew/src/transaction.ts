@@ -157,12 +157,12 @@ const existAccount = (address: string, accounts: Account[]): boolean => {
     return _(accounts).map((acc: Account) => acc.address).includes(address);
 }
 const createAccount = (address: string, accounts: Account[]): boolean => {
-    var acc: Account = new Account(address);
+    let acc: Account = new Account(address);
     accounts.push(acc);
     return true;
 }
 const findAccount = (address: string, accounts: Account[]): Account => {
-    var account: Account = _.find(accounts, (acc: Account) => {return acc.address == address});
+    let account: Account = _.find(accounts, (acc: Account) => {return acc.address == address});
     return account;
 }
 const validateTransaction = (transaction: Transaction, accounts: Account[]): boolean => {
@@ -186,7 +186,7 @@ const validateTransaction = (transaction: Transaction, accounts: Account[]): boo
         console.log('The transaction is too old. tx: ' + transaction.id);
         return false;
     }
-    var accSender: Account = findAccount(transaction.sender, accounts);
+    let accSender: Account = findAccount(transaction.sender, accounts);
     if(accSender == undefined){
         console.log('validateTransaction: no account found.');
         return false;
@@ -228,7 +228,7 @@ const validateBlockTransactions = (aTransactions: Transaction[], aUnspentTxOuts:
 };
 */
 const validateBlockTransactions = (aTransactions: Transaction[], accounts: Account[]): boolean => {
-    var accSender: Account;
+    let accSender: Account;
 
     const coinbaseTx = aTransactions[0];
     if (!validateCoinbaseTx(coinbaseTx)) {
@@ -244,10 +244,10 @@ const validateBlockTransactions = (aTransactions: Transaction[], accounts: Accou
         return false;
     }
 
-    for(var i=0; i < accounts.length; i++){
+    for(let i=0; i < accounts.length; i++){
         accounts[i].available = accounts[i].balance;
     }
-    for(var j=1; j < aTransactions.length; j++){
+    for(let j=1; j < aTransactions.length; j++){
         accSender = findAccount(aTransactions[j].sender, accounts);
         if(accSender == undefined){
             console.log('validateBlockTransactions: no account found.');
@@ -470,14 +470,14 @@ const updateUnspentTxOuts = (aTransactions: Transaction[], aUnspentTxOuts: Unspe
 };
 */
 const updateAccounts = (aTransactions: Transaction[], accounts: Account[]): Account[] => {
-	var amt: number;
-	var thSender: TxHistory;
-	var thReceiver: TxHistory;
-	var accSender: Account;
-	var accReceiver: Account;
-	var now: number;
+	let amt: number;
+	let thSender: TxHistory;
+	let thReceiver: TxHistory;
+	let accSender: Account;
+	let accReceiver: Account;
+	let now: number;
 
-	for(var i=0; i<aTransactions.length; i++){
+	for(let i=0; i<aTransactions.length; i++){
 		amt = aTransactions[i].amount;
 		now = getCurrentTimestamp();
 		if(aTransactions[i].sender !== "coinbase"){

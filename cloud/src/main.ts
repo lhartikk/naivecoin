@@ -66,7 +66,7 @@ const initHttpServer = (myHttpPort: number) => {
     });
     */
     app.get('/account/:address', (req, res) => {
-        var acc: Account = findAccount(req.params.address, getAccounts());
+        let acc: Account = findAccount(req.params.address, getAccounts());
         if(acc == undefined){
         	res.send({'Error:': "address is wrong"});             
         }
@@ -89,7 +89,7 @@ const initHttpServer = (myHttpPort: number) => {
     });
     */
     app.get('/myaccount', (req, res) => {
-        var acc: Account = findAccount(getPublicFromWallet(), getAccounts());
+        let acc: Account = findAccount(getPublicFromWallet(), getAccounts());
         if(acc == undefined){
            	res.send({'Error': 'No account was found.'})
         }else{
@@ -120,7 +120,7 @@ const initHttpServer = (myHttpPort: number) => {
     });
 
     app.get('/mybalance', (req, res) => {
-        var acc: Account = findAccount(getPublicFromWallet(), getAccounts());
+        let acc: Account = findAccount(getPublicFromWallet(), getAccounts());
         if(acc == undefined){
         	res.send({'Error:': "No such account."});             
         }else{

@@ -1,5 +1,5 @@
-var mode: string = 'dew';
-var cloudServer = 'localhost:7001';
+let mode: string = 'dew';
+let cloudServer = 'localhost:7001';
 
 
 

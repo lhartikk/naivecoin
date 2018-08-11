@@ -175,7 +175,7 @@ const generatenextBlockWithTransaction = (receiverAddress: string, amount: numbe
 };
 */
 const generatenextBlockWithTransaction = (receiverAddress: string, amount: number) => {
-    var blockData: Transaction[];
+    let blockData: Transaction[];
  
     if (!isValidAddress(receiverAddress)) {
         throw Error('invalid address');

@@ -11,8 +11,8 @@ const sockets: WebSocket[] = [];
 const getSockets = () => sockets;
 
 //dewcoin
-var wsCloud: WebSocket;
-var dewAddress: string = '127.0.0.1';
+let wsCloud: WebSocket;
+let dewAddress: string = '127.0.0.1';
 const getDewAddress = () => {
 	return dewAddress;
 }

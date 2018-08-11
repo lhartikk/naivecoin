@@ -63,11 +63,11 @@ const updateTransactionPool = (unspentTxOuts: UnspentTxOut[]) => {
 };
 */
 const updateTransactionPoolReplace = (accounts: Account[]) => {
-    var accSender;
+    let accSender;
 
     transactionPool = _(transactionPool).uniqBy('id').filter(tx => validateTransaction(tx, accounts)).value();
 
-    for(var i=0; i < accounts.length; i++){
+    for(let i=0; i < accounts.length; i++){
         accounts[i].available = accounts[i].balance;
     }
     const invalidTxs = [];
@@ -93,7 +93,7 @@ const updateTransactionPool = (transactions: Transaction[]) => {
     //console.log('tansactionPool:  '+JSON.stringify(transactionPool));
     if (transactions.length > 0) {
         //console.log('removing the following transactions from txPool: %s', JSON.stringify(transactions));
-        var txIDs: string[] = _.map(transactions, (tx: Transaction) => tx.id); 
+        let txIDs: string[] = _.map(transactions, (tx: Transaction) => tx.id); 
         transactionPool = _.filter(transactionPool, (tx: Transaction) => !_.includes(txIDs, tx.id));
     }
     //console.log('tansactionPool:  '+JSON.stringify(transactionPool));
@@ -129,11 +129,11 @@ const isValidTxForPool = (tx: Transaction, aTtransactionPool: Transaction[]): bo
 */
 // This transaction tx has been validated in another function. id duplicate was checked in validation.
 const isValidTxForPool = (tx: Transaction, aTransactionPool: Transaction[], accounts: Account[]): boolean => {
-    var accSender: Account;
+    let accSender: Account;
 
 //console.log('isValidForPool: a Pool: ' + JSON.stringify(aTransactionPool));
 //console.log('tx:  ' + JSON.stringify(tx));
-    for(var i=0; i < accounts.length; i++){
+    for(let i=0; i < accounts.length; i++){
         accounts[i].available = accounts[i].balance;
     }
     for (const trx of aTransactionPool) {

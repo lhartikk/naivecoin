@@ -56,7 +56,7 @@ const getBalance = (address: string, unspentTxOuts: UnspentTxOut[]): number => {
 };
 */
 const getBalance = (address: string, accounts: Account[]): number => {
-    var acct: Account = findAccount(address, accounts);
+    let acct: Account = findAccount(address, accounts);
     if(acct == undefined){
         console.log('getBalance: no account found.');
         return 0;

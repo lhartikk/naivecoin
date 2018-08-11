@@ -9,8 +9,8 @@ import {getTransactionPool} from './transactionPool';
 
 //dewcoin
 import {getMode, setMode, getCloud} from './config';
-var mode:string;
-var wsCloud: WebSocket;
+let mode: string;
+let wsCloud: WebSocket;
 
 const sockets: WebSocket[] = [];
 
@@ -138,13 +138,14 @@ const initMessageHandler = (ws: WebSocket) => {
                 return;
             }
             console.log('[Received message: %s', JSON.stringify(message));
-	   if(mode == 'local'){
             switch (message.type) {
                 case MessageType.QUERY_LATEST:
                     write(ws, responseLatestMsg());
                     break;
                 case MessageType.QUERY_ALL:
-                    write(ws, responseChainMsg());
+                    if(mode == 'local'){
+                        write(ws, responseChainMsg());
+                    }
                     break;
                 case MessageType.RESPONSE_BLOCKCHAIN:
                     const receivedBlocks: Block[] = JSONToObject<Block[]>(message.data);
@@ -175,46 +176,6 @@ const initMessageHandler = (ws: WebSocket) => {
                     });
                     break;
             }
-       }else if (mode == 'dew'){
-            switch (message.type) {
-                case MessageType.QUERY_LATEST:
-                    //write(ws, responseLatestMsg());
-                    break;
-                case MessageType.QUERY_ALL:
-                    //write(ws, responseChainMsg());
-                    break;
-                case MessageType.RESPONSE_BLOCKCHAIN:
-			    /*
-                    const receivedBlocks: Block[] = JSONToObject<Block[]>(message.data);
-                    if (receivedBlocks === null) {
-                        console.log('invalid blocks received: %s', JSON.stringify(message.data));
-                        break;
-                    }
-                    handleBlockchainResponse(receivedBlocks);
-			    */
-                    break;
-                case MessageType.QUERY_TRANSACTION_POOL:
-                    write(ws, responseTransactionPoolMsg());
-                    break;
-                case MessageType.RESPONSE_TRANSACTION_POOL:
-                    const receivedTransactions: Transaction[] = JSONToObject<Transaction[]>(message.data);
-                    if (receivedTransactions === null) {
-                        console.log('invalid transaction received: %s', JSON.stringify(message.data));
-                        break;
-                    }
-                    receivedTransactions.forEach((transaction: Transaction) => {
-                        try {
-                            handleReceivedTransaction(transaction);
-                            // if no error is thrown, transaction was indeed added to the pool
-                            // let's broadcast transaction pool
-                            broadCastTransactionPool();
-                        } catch (e) {
-                            console.log(e.message);
-                        }
-                    });
-                    break;
-            }
-	  }
         } catch (e) {
             console.log(e);
         }
@@ -223,7 +184,7 @@ const initMessageHandler = (ws: WebSocket) => {
 };
 
 
-
+//for cloud-dew channel
 const initCloudMessageHandler = (ws: WebSocket) => {
     ws.on('message', (data: string) => {
 	   
@@ -371,6 +332,11 @@ const setModeLocal = () => {
 	if (typeof wsCloud !== "undefined") {
 		wsCloud.close();
 	};
+	broadcast(queryChainLengthMsg());
+  	//query transactions pool only some time after chain query
+    	setTimeout(() => {
+        	broadcast(queryTransactionPoolMsg());
+    	}, 500);
 };
 
 const setModeDew = () => {
@@ -385,11 +351,12 @@ const setModeDew = () => {
     		initCloudMessageHandler(wsCloud);
 
     		//write(wsCloud, {'type': 5, 'data': null});
+		broadcast(queryChainLengthMsg());
     		write(wsCloud, queryChainLengthMsg());
-    		// query transactions pool only some time after chain query
-    		//setTimeout(() => {
-        	//broadcast(queryTransactionPoolMsg());
-    		//}, 500);
+    		//query transactions pool only some time after chain query
+    		setTimeout(() => {
+        		broadcast(queryTransactionPoolMsg());
+    		}, 500);
     	});
     	wsCloud.on('error', () => {
         	console.log('connection with the cloud failed');

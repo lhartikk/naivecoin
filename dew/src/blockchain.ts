@@ -16,6 +16,11 @@ import {hexToBinary} from './util';
 //import {createTransaction, findUnspentTxOuts, getBalance, getPrivateFromWallet, getPublicFromWallet} from './wallet';
 import {createTransaction, getBalance, getPrivateFromWallet, getPublicFromWallet} from './wallet';
 
+//dewcoin
+import {getMode, setMode} from './config';
+let mode:string;
+
+
 class Block {
 
     public index: number;
@@ -66,18 +71,21 @@ const genesisBlock: Block = new Block(
 );
 
 let blockchain: Block[] = [genesisBlock];
+const getBlockchain = (): Block[] => blockchain;
+//dewcoin
+const resetBlockchain = () => {blockchain = [genesisBlock];};
 
 // the unspent txOut of genesis block is set to unspentTxOuts on startup
 //let unspentTxOuts: UnspentTxOut[] = processTransactions(blockchain[0].data, []);
 let accounts: Account[] = processTransactions(blockchain[0].data, []);
-
-const getBlockchain = (): Block[] => blockchain;
-
 //const getUnspentTxOuts = (): UnspentTxOut[] => _.cloneDeep(unspentTxOuts);
 //const getAccounts = (): Account[] => _.cloneDeep(accounts);
 const getAccounts = (): Account[] => accounts;
 
-
+//dewcoin
+let theLatestBlock: Block = genesisBlock;
+let previousAdjustBlock: Block = genesisBlock;
+let accuDiff = 1;
 
 // and txPool should be only updated at the same time
 /*
@@ -91,7 +99,16 @@ const setAccounts = (newAccount: Account[]) => {
     accounts = newAccount;
 };
 
-const getLatestBlock = (): Block => blockchain[blockchain.length - 1];
+
+//const getLatestBlock = (): Block => blockchain[blockchain.length - 1];
+const getLatestBlock = (): Block => {
+	mode = getMode();
+	if(mode == 'local'){
+		return blockchain[blockchain.length - 1];
+	}else if(mode == 'dew'){
+		return theLatestBlock;
+	}
+}
 
 // in seconds
 const BLOCK_GENERATION_INTERVAL: number = 10;
@@ -99,12 +116,22 @@ const BLOCK_GENERATION_INTERVAL: number = 10;
 // in blocks
 const DIFFICULTY_ADJUSTMENT_INTERVAL: number = 10;
 
+
+
 const getDifficulty = (aBlockchain: Block[]): number => {
     const latestBlock: Block = aBlockchain[blockchain.length - 1];
     if (latestBlock.index % DIFFICULTY_ADJUSTMENT_INTERVAL === 0 && latestBlock.index !== 0) {
         return getAdjustedDifficulty(latestBlock, aBlockchain);
     } else {
         return latestBlock.difficulty;
+    }
+};
+
+const getDifficultyChain1 = (): number => {
+    if (theLatestBlock.index % DIFFICULTY_ADJUSTMENT_INTERVAL === 0 && theLatestBlock.index !== 0) {
+        return getAdjustedDifficultyChain1(theLatestBlock);
+    } else {
+        return theLatestBlock.difficulty;
     }
 };
 
@@ -120,11 +147,48 @@ const getAdjustedDifficulty = (latestBlock: Block, aBlockchain: Block[]) => {
         return prevAdjustmentBlock.difficulty;
     }
 };
+const getAdjustedDifficultyChain1 = (latestBlock: Block) => {
+    const prevAdjustmentBlock: Block = previousAdjustBlock;
+    const timeExpected: number = BLOCK_GENERATION_INTERVAL * DIFFICULTY_ADJUSTMENT_INTERVAL;
+    const timeTaken: number = latestBlock.timestamp - prevAdjustmentBlock.timestamp;
+    if (timeTaken < timeExpected / 2) {
+        return prevAdjustmentBlock.difficulty + 1;
+    } else if (timeTaken > timeExpected * 2) {
+        return prevAdjustmentBlock.difficulty - 1;
+    } else {
+        return prevAdjustmentBlock.difficulty;
+    }
+};
 
-////
+
+/*
 const generateRawNextBlock = (blockData: Transaction[]) => {
     const previousBlock: Block = getLatestBlock();
     const difficulty: number = getDifficulty(getBlockchain());
+    const nextIndex: number = previousBlock.index + 1;
+    const nextTimestamp: number = getCurrentTimestamp();
+    const newBlock: Block = findBlock(nextIndex, previousBlock.hash, nextTimestamp, blockData, difficulty);
+    if (addBlockToChain(newBlock)) {
+        broadcastLatest();
+        return newBlock;
+    } else {
+        return null;
+    }
+
+};
+*/
+const generateRawNextBlock = (blockData: Transaction[]) => {
+    const previousBlock: Block = getLatestBlock();
+    //console.log('previousBlock: '+ JSON.stringify(previousBlock));
+    //console.log('getLatestBlock: '+ JSON.stringify(getLatestBlock()));
+    //console.log('theLatestBlock: '+ JSON.stringify(theLatestBlock));
+    let difficulty: number;
+    mode = getMode();
+    if(mode == 'local'){
+        difficulty = getDifficulty(getBlockchain());
+    }else if(mode == 'dew'){
+        difficulty = getDifficultyChain1();
+    }    
     const nextIndex: number = previousBlock.index + 1;
     const nextTimestamp: number = getCurrentTimestamp();
     const newBlock: Block = findBlock(nextIndex, previousBlock.hash, nextTimestamp, blockData, difficulty);
@@ -175,7 +239,7 @@ const generatenextBlockWithTransaction = (receiverAddress: string, amount: numbe
 };
 */
 const generatenextBlockWithTransaction = (receiverAddress: string, amount: number) => {
-    var blockData: Transaction[];
+    let blockData: Transaction[];
  
     if (!isValidAddress(receiverAddress)) {
         throw Error('invalid address');
@@ -269,11 +333,16 @@ const isValidNewBlock = (newBlock: Block, previousBlock: Block): boolean => {
     return true;
 };
 
+
 const getAccumulatedDifficulty = (aBlockchain: Block[]): number => {
     return aBlockchain
         .map((block) => block.difficulty)
         .map((difficulty) => Math.pow(2, difficulty))
         .reduce((a, b) => a + b);
+};
+
+const getAccumulatedDifficultyChain1 = (): number => {
+    return accuDiff;
 };
 
 const isValidTimestamp = (newBlock: Block, previousBlock: Block): boolean => {
@@ -340,6 +409,7 @@ const isValidChain = (blockchainToValidate: Block[]): UnspentTxOut[] => {
     return aUnspentTxOuts;
 };
 */
+//only used for chain2
 const isValidChain = (blockchainToValidate: Block[]): Account[] => {
     console.log('isValidChain:');
     console.log(JSON.stringify(blockchainToValidate));
@@ -354,7 +424,7 @@ const isValidChain = (blockchainToValidate: Block[]): Account[] => {
     Validate each block in the chain. The block is valid if the block structure is valid
       and the transaction are valid
      */
-    let accts: Account[] = [];
+    let accountsTemp: Account[] = [];
 
     for (let i = 0; i < blockchainToValidate.length; i++) {
         const currentBlock: Block = blockchainToValidate[i];
@@ -362,14 +432,15 @@ const isValidChain = (blockchainToValidate: Block[]): Account[] => {
             return null;
         }
 
-        accts = processTransactions(currentBlock.data, accts);
-        if (accts === null) {
+        accountsTemp = processTransactions(currentBlock.data, accountsTemp);
+        if (accountsTemp === null) {
             console.log('invalid transactions in blockchain');
             return null;
         }
     }
-    return accts;
+    return accountsTemp;
 };
+
 
 /*
 const addBlockToChain = (newBlock: Block): boolean => {
@@ -389,21 +460,30 @@ const addBlockToChain = (newBlock: Block): boolean => {
 };
 */
 const addBlockToChain = (newBlock: Block): boolean => {
+    mode = getMode();
     if (isValidNewBlock(newBlock, getLatestBlock())) {
         const retVal: Account[] = processTransactions(newBlock.data, getAccounts());
         if (retVal === null) {
             console.log('block is not valid in terms of transactions');
             return false;
         } else {
-            blockchain.push(newBlock);
+            if(mode == 'local'){
+            	blockchain.push(newBlock);
+            }
             setAccounts(retVal);
-            //updateTransactionPool(accounts);
             updateTransactionPool(newBlock.data);
+            //The following is done even it is in local mode, preparing for mode change.
+            theLatestBlock = newBlock;
+            if (newBlock.index % DIFFICULTY_ADJUSTMENT_INTERVAL === 0) {
+                previousAdjustBlock = newBlock;
+            }
+            accuDiff += Math.pow(2, newBlock.difficulty);
             return true;
         }
     }
     return false;
 };
+
 
 /*
 const replaceChain = (newBlocks: Block[]) => {
@@ -422,19 +502,32 @@ const replaceChain = (newBlocks: Block[]) => {
 };
 */
 const replaceChain = (newBlocks: Block[]) => {
-    const accts = isValidChain(newBlocks);
-    const validChain: boolean = accts !== null;
+    const accountsTemp = isValidChain(newBlocks);
+    const validChain: boolean = accountsTemp !== null;
+    mode = getMode();
+    let currentDifficulty: number;
+    if(mode == 'local'){
+        currentDifficulty = getAccumulatedDifficulty(getBlockchain());
+    } else if(mode == 'dew'){
+        currentDifficulty = getAccumulatedDifficultyChain1();
+    }
     if (validChain &&
-        getAccumulatedDifficulty(newBlocks) > getAccumulatedDifficulty(getBlockchain())) {
+        getAccumulatedDifficulty(newBlocks) > currentDifficulty) {
         console.log('Received blockchain is valid. Replacing current blockchain with received blockchain');
-        blockchain = newBlocks;
-        setAccounts(accts);
+        if(mode == 'local'){
+            blockchain = newBlocks;
+        }
+        setAccounts(accountsTemp);
         updateTransactionPoolReplace(accounts);
+        theLatestBlock = newBlocks[newBlocks.length - 1];
+        previousAdjustBlock = newBlocks[theLatestBlock.index - theLatestBlock.index % DIFFICULTY_ADJUSTMENT_INTERVAL];
+        accuDiff = getAccumulatedDifficulty(newBlocks);
         broadcastLatest();
     } else {
         console.log('Received blockchain invalid');
     }
 };
+
 
 /*
 const handleReceivedTransaction = (transaction: Transaction) => {
