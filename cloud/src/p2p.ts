@@ -1,10 +1,17 @@
 import * as WebSocket from 'ws';
 import {Server} from 'ws';
+/*
 import {
-    addBlockToChain, Block, getBlockchain, getLatestBlock, handleReceivedTransaction, isValidBlockStructure,
+    addBlockToChain, Block, getBlockchain, getLatestBlock, handleReceivedTransaction, validateAccount, isValidBlockStructure,
     replaceChain
 } from './blockchain';
-import {Transaction} from './transaction';
+*/
+import {
+    addBlockToChain, Block, getBlockchain, getLatestBlock, handleReceivedTransaction, validateAccount, isValidBlockStructure,
+    replaceChain, setAccounts, getAccounts
+} from './blockchain';
+//import {Transaction} from './transaction';
+import {Transaction, Account, verifyAccounts} from './transaction';
 import {getTransactionPool} from './transactionPool';
 
 const sockets: WebSocket[] = [];
@@ -26,7 +33,9 @@ enum MessageType {
     QUERY_ALL = 1,
     RESPONSE_BLOCKCHAIN = 2,
     QUERY_TRANSACTION_POOL = 3,
-    RESPONSE_TRANSACTION_POOL = 4
+    RESPONSE_TRANSACTION_POOL = 4,
+    QUERY_ACCOUNTS = 5,
+    RESPONSE_ACCOUNTS = 6
 }
 
 class Message {
@@ -266,6 +275,35 @@ const initCloudMessageHandler = (ws: WebSocket) => {
                         }
                     });
                     break;
+                case MessageType.QUERY_ACCOUNTS:
+                    const dewAccounts: Account[] = JSONToObject<Account[]>(message.data);
+                    if (dewAccounts === null) {
+                        console.log('invalid dew accounts received: %s', JSON.stringify(message.data));
+                        break;
+                    }
+                    const consistent: boolean = verifyAccounts(dewAccounts, getAccounts());
+                    if (!consistent){
+                        write(ws, responseAccountsMsg());
+                    }
+                    break;
+                case MessageType.RESPONSE_ACCOUNTS:
+                    const receivedAccounts: Account[] = JSONToObject<Account[]>(message.data);
+                    if (receivedAccounts === null) {
+                        console.log('invalid account received: %s', JSON.stringify(message.data));
+                        break;
+                    }
+                    receivedAccounts.forEach((account: Account) => {
+                        try {
+                            validateAccount(account);
+                            // if no error is thrown, account was indeed added to the account pool
+                            // let's broadcast account pool
+                            // broadCastTransactionPool();
+                        } catch (e) {
+                            console.log(e.message);
+                        }
+                    });
+                    setAccounts(receivedAccounts);
+                    break;
             }
         } catch (e) {
             console.log(e);
@@ -305,6 +343,11 @@ const queryTransactionPoolMsg = (): Message => ({
 const responseTransactionPoolMsg = (): Message => ({
     'type': MessageType.RESPONSE_TRANSACTION_POOL,
     'data': JSON.stringify(getTransactionPool())
+});
+
+const responseAccountsMsg = (): Message => ({
+    'type': MessageType.RESPONSE_ACCOUNTS,
+    'data': JSON.stringify(getAccounts())
 });
 
 const initErrorHandler = (ws: WebSocket) => {

@@ -446,6 +446,21 @@ const handleReceivedTransaction = (transaction: Transaction) => {
     addToTransactionPool(transaction, getAccounts());
 };
 
+const validateAccount = (account: Account) => {
+/*
+    if (!validateTransaction(tx, accounts)) {
+        throw Error('Trying to add invalid tx to pool. Tx: ' + tx.id);
+    }
+
+    if (!isValidTxForPool(tx, transactionPool, accounts)) {
+        throw Error('Tx is not valid for the pool, Tx: ' + tx.id);
+    }
+    //console.log('adding to txPool: %s', JSON.stringify(tx));
+    transactionPool.push(tx);
+*/
+};
+
+
 /*
 export {
     Block, getBlockchain, getUnspentTxOuts, getLatestBlock, sendTransaction,
@@ -455,9 +470,9 @@ export {
 };
 */
 export {
-    Block, getBlockchain, getAccounts, getLatestBlock, sendTransaction,
+    Block, getBlockchain, getAccounts, setAccounts, getLatestBlock, sendTransaction,
     generateRawNextBlock, generateNextBlock, generatenextBlockWithTransaction,
-    handleReceivedTransaction, getMyAccount,
+    handleReceivedTransaction, validateAccount, getMyAccount,
     getAccountBalance, isValidBlockStructure, replaceChain, addBlockToChain, getCurrentTimestamp
 };
 

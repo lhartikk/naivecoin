@@ -14,7 +14,7 @@ import {
 } from './blockchain';
 
 //import {connectToPeers, getSockets, initP2PServer} from './p2p';
-import {connectToPeers, getSockets, initP2PServer, setModeLocal, setModeDew} from './p2p';
+import {connectToPeers, getSockets, initP2PServer, setModeLocal, setModeDew, fetchAccounts} from './p2p';
 
 //import {UnspentTxOut} from './transaction';
 import {Account, findAccount} from './transaction';
@@ -50,6 +50,12 @@ const initHttpServer = (myHttpPort: number) => {
         setModeDew();
         mode = getMode();
         res.send('The system is in ' + mode + ' mode.');
+    });
+
+    app.get('/fetchAccounts', (req, res) => {
+        //This one should not be available in local mode.
+        fetchAccounts()
+        res.send('Accounts fetch requested.');
     });
 
     app.get('/blocks', (req, res) => {

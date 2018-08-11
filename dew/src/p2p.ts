@@ -7,10 +7,11 @@ import {
 } from './blockchain';
 */
 import {
-    addBlockToChain, Block, getBlockchain, resetBlockchain, getLatestBlock, handleReceivedTransaction, isValidBlockStructure,
-    replaceChain
+    addBlockToChain, Block, getBlockchain, resetBlockchain, getLatestBlock, handleReceivedTransaction, validateAccount, isValidBlockStructure,
+    replaceChain, setAccounts, getAccounts
 } from './blockchain';
-import {Transaction} from './transaction';
+//import {Transaction} from './transaction';
+import {Transaction, Account} from './transaction';
 import {getTransactionPool} from './transactionPool';
 
 //dewcoin
@@ -26,7 +27,9 @@ enum MessageType {
     QUERY_ALL = 1,
     RESPONSE_BLOCKCHAIN = 2,
     QUERY_TRANSACTION_POOL = 3,
-    RESPONSE_TRANSACTION_POOL = 4
+    RESPONSE_TRANSACTION_POOL = 4,
+    QUERY_ACCOUNTS = 5,
+    RESPONSE_ACCOUNTS = 6
 }
 
 class Message {
@@ -239,6 +242,25 @@ const initCloudMessageHandler = (ws: WebSocket) => {
                         }
                     });
                     break;
+                case MessageType.QUERY_ACCOUNTS:
+                    write(ws, responseAccountsMsg());
+                    break;
+                case MessageType.RESPONSE_ACCOUNTS:
+                    const receivedAccounts: Account[] = JSONToObject<Account[]>(message.data);
+                    if (receivedAccounts === null) {
+                        console.log('invalid accounts received: %s', JSON.stringify(message.data));
+                        break;
+                    }
+                    receivedAccounts.forEach((account: Account) => {
+                        try {
+                            validateAccount(account);
+                            // if no error is thrown, accounts is valid
+                        } catch (e) {
+                            console.log(e.message);
+                        }
+                    });
+                    setAccounts(receivedAccounts);
+                    break;
             }
         } catch (e) {
             console.log(e);
@@ -281,6 +303,16 @@ const responseTransactionPoolMsg = (): Message => ({
     'data': JSON.stringify(getTransactionPool())
 });
 
+const queryAccountsMsg = (): Message => ({
+    'type': MessageType.QUERY_ACCOUNTS,
+    'data': JSON.stringify(getAccounts())
+});
+
+const responseAccountsMsg = (): Message => ({
+    'type': MessageType.RESPONSE_ACCOUNTS,
+    'data': JSON.stringify(getAccounts())
+});
+
 const initErrorHandler = (ws: WebSocket) => {
     const closeConnection = (myWs: WebSocket) => {
         console.log('connection failed to peer: ' + myWs.url);
@@ -288,6 +320,15 @@ const initErrorHandler = (ws: WebSocket) => {
     };
     ws.on('close', () => closeConnection(ws));
     ws.on('error', () => closeConnection(ws));
+};
+
+const fetchAccounts = (): void => {
+    if((typeof wsCloud !== undefined) && (wsCloud.readyState == 1)){
+        write(wsCloud, queryAccountsMsg());
+        console.log('Accounts fetched.');
+    } else {
+        console.log('Accounts fetch failed.');
+    }
 };
 
 
@@ -388,4 +429,4 @@ const setModeDew = () => {
 
 //export {connectToPeers, broadcastLatest, broadCastTransactionPool, initP2PServer, getSockets};
 export {connectToPeers, broadcastLatest, broadCastTransactionPool, initP2PServer, getSockets, 
-setModeLocal, setModeDew};
+setModeLocal, setModeDew, fetchAccounts};

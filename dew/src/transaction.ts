@@ -96,6 +96,9 @@ class TxHistory {
     }
 }
 
+
+
+
 /*
 const getTransactionId = (transaction: Transaction): string => {
     const txInContent: string = transaction.txIns
@@ -675,8 +678,8 @@ export {
 */
 export {
     processTransactions, signTransaction, getTransactionId, isValidAddress, validateTransaction,
-    Account, findAccount, existAccount, createAccount, getCoinbaseTransaction, getPublicKey, hasDuplicates,
-    Transaction
+    Account, findAccount, existAccount, createAccount, getCoinbaseTransaction, 
+    getPublicKey, hasDuplicates, Transaction
 };
 //
 //
