@@ -67,6 +67,7 @@ const getSockets = () => sockets;
 
 
 const initConnection = (ws: WebSocket) => {
+    console.log('AAAAAAAAAAinit: ' + ws.url);
     sockets.push(ws);
     initMessageHandler(ws);
     initErrorHandler(ws);
@@ -193,7 +194,7 @@ const initMessageHandler = (ws: WebSocket) => {
                     break;
                 case MessageType.ALTERNATE_ADDRESS:
                     console.log('Alternate address received: %s', message.data);
-                    connectToPeers(message.data);
+                    connectToPeers('ws://' + message.data);
                     break;
             }            
         } catch (e) {

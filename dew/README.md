@@ -102,8 +102,9 @@ curl -H "Content-type: application/json" --data "{\"address\": \"04b3e56e277a9a7
 curl -H "Content-type:application/json" --data '{"peer" : "ws://localhost:6001"}' http://localhost:3001/addpeer
 ```
 For Windows:
-curl -H "Content-type:application/json" --data "{\"peer\" : \"ws://localhost:7001\"}" http://localhost:3001/addpeer
+curl -H "Content-type:application/json" --data "{\"peer\" : \"ws://localhost:6002\"}" http://localhost:3001/addpeer
 ```
+curl -H "Content-type:application/json" --data "{\"peer\" : \"ws://192.168.1.186:6002\"}" http://localhost:3001/addpeer
 
 
 #### Stop the server

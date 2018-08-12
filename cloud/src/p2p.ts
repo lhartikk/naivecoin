@@ -14,18 +14,14 @@ import {
 import {Transaction, Account, verifyAccounts} from './transaction';
 import {getTransactionPool} from './transactionPool';
 
+//dewcoin
+import {getDew} from './config';
+
 const sockets: WebSocket[] = [];
 const getSockets = () => sockets;
 
 //dewcoin
 let wsCloud: WebSocket;
-let dewAddress: string = '127.0.0.1';
-const getDewAddress = () => {
-	return dewAddress;
-}
-const setDewAddress = (address: string) => {
-	dewAddress = address;
-}
 
 
 enum MessageType {
@@ -58,7 +54,10 @@ const initP2PServer = (p2pPort: number) => {
     const server: Server = new WebSocket.Server({port: p2pPort});
     server.on('connection', (ws: WebSocket, req) => {
         console.log('New websocket connection from %s:%d', req.connection.remoteAddress.substring(7), req.connection.remotePort);
-        if(req.connection.remoteAddress.substring(7) == dewAddress){
+        const dew: string = getDew();
+        const address: string = dew.substring(0, dew.search(':'));
+        console.log('Address: %s', address);
+        if(req.connection.remoteAddress.substring(7) == address){
             initCloudConnection(ws);
         }else{
             initConnection(ws);
@@ -82,6 +81,7 @@ const initConnection = (ws: WebSocket) => {
 };
 */
 const initConnection = (ws: WebSocket) => {
+    console.log('AAAAAAAAAAinit: ' + ws.url);
     sockets.push(ws);
     initMessageHandler(ws);
     initErrorHandler(ws);
@@ -355,13 +355,6 @@ const responseAccountsMsg = (): Message => ({
     'data': JSON.stringify(getAccounts())
 });
 
-/*
-const alternateAddressMsg = (address: string): Message => ({
-    'type': MessageType.ALTERNATE_ADDRESS,
-    'data': address
-});
-*/
-
 const initErrorHandler = (ws: WebSocket) => {
     const closeConnection = (myWs: WebSocket) => {
         console.log('connection failed to peer: ' + myWs.url);
@@ -419,4 +412,4 @@ const broadCastTransactionPool = () => {
     broadcast(responseTransactionPoolMsg());
 };
 
-export {connectToPeers, broadcastLatest, broadCastTransactionPool, initP2PServer, getSockets, getDewAddress, setDewAddress};
+export {connectToPeers, broadcastLatest, broadCastTransactionPool, initP2PServer, getSockets};
