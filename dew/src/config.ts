@@ -1,5 +1,6 @@
 let mode: string = 'dew';
-let cloudAddress = '127.0.0.1:7001';
+//let cloudAddress = '127.0.0.1:7001';
+let cloudAddress = '192.168.1.114:7001';
 
 
 
