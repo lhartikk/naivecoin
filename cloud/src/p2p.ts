@@ -35,7 +35,8 @@ enum MessageType {
     QUERY_TRANSACTION_POOL = 3,
     RESPONSE_TRANSACTION_POOL = 4,
     QUERY_ACCOUNTS = 5,
-    RESPONSE_ACCOUNTS = 6
+    RESPONSE_ACCOUNTS = 6,
+    ALTERNATE_ADDRESS = 7
 }
 
 class Message {
@@ -126,7 +127,6 @@ const JSONToObject = <T>(data: string): T => {
 /*
 const initMessageHandler = (ws: WebSocket) => {
     ws.on('message', (data: string) => {
-
         try {
             const message: Message = JSONToObject<Message>(data);
             if (message === null) {
@@ -221,6 +221,10 @@ const initMessageHandler = (ws: WebSocket) => {
                         }
                     });
                     break;
+                case MessageType.ALTERNATE_ADDRESS:
+                    //console.log('Alternate address received: %s', message.data);
+                    //connectToPeers(message.data);
+                    break;            
             }
         } catch (e) {
             console.log(e);
@@ -232,6 +236,7 @@ const initMessageHandler = (ws: WebSocket) => {
 
 const initCloudMessageHandler = (ws: WebSocket) => {
     ws.on('message', (data: string) => {
+        //console.log('New message from %s:%d', req.connection.remoteAddress.substring(7), req.connection.remotePort);
 	   
         try {
             const message: Message = JSONToObject<Message>(data);
@@ -349,6 +354,13 @@ const responseAccountsMsg = (): Message => ({
     'type': MessageType.RESPONSE_ACCOUNTS,
     'data': JSON.stringify(getAccounts())
 });
+
+/*
+const alternateAddressMsg = (address: string): Message => ({
+    'type': MessageType.ALTERNATE_ADDRESS,
+    'data': address
+});
+*/
 
 const initErrorHandler = (ws: WebSocket) => {
     const closeConnection = (myWs: WebSocket) => {

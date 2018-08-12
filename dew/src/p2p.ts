@@ -29,7 +29,8 @@ enum MessageType {
     QUERY_TRANSACTION_POOL = 3,
     RESPONSE_TRANSACTION_POOL = 4,
     QUERY_ACCOUNTS = 5,
-    RESPONSE_ACCOUNTS = 6
+    RESPONSE_ACCOUNTS = 6,
+    ALTERNATE_ADDRESS = 7
 }
 
 class Message {
@@ -69,6 +70,9 @@ const initConnection = (ws: WebSocket) => {
     sockets.push(ws);
     initMessageHandler(ws);
     initErrorHandler(ws);
+    if(getMode() == 'dew'){
+        write(ws, alternateAddressMsg(getCloud()));
+    }
     write(ws, queryChainLengthMsg());
 
     // query transactions pool only some time after chain query
@@ -187,7 +191,11 @@ const initMessageHandler = (ws: WebSocket) => {
                         }
                     });
                     break;
-            }
+                case MessageType.ALTERNATE_ADDRESS:
+                    console.log('Alternate address received: %s', message.data);
+                    connectToPeers(message.data);
+                    break;
+            }            
         } catch (e) {
             console.log(e);
         }
@@ -312,6 +320,12 @@ const responseAccountsMsg = (): Message => ({
     'type': MessageType.RESPONSE_ACCOUNTS,
     'data': JSON.stringify(getAccounts())
 });
+
+const alternateAddressMsg = (address: string): Message => ({
+    'type': MessageType.ALTERNATE_ADDRESS,
+    'data': address
+});
+
 
 const initErrorHandler = (ws: WebSocket) => {
     const closeConnection = (myWs: WebSocket) => {

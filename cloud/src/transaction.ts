@@ -98,14 +98,14 @@ class TxHistory {
 
 
 const verifyAccounts = (accounts1: Account[], accounts2: Account[]): boolean => {
-	console.log('accounts1: ' + JSON.stringify(accounts1));
-	console.log('accounts2: ' + JSON.stringify(accounts2));
+	//console.log('accounts1: ' + JSON.stringify(accounts1));
+	//console.log('accounts2: ' + JSON.stringify(accounts2));
 	const a1: Account[] = _.sortBy(accounts1, 'id');
 	const a2: Account[] = _.sortBy(accounts2, 'id');
 	const s1: string = JSON.stringify(a1);
 	const s2: string = JSON.stringify(a2);
-	console.log('s1:' + s1);
-	console.log('s2:' + s2);
+	//console.log('s1:' + s1);
+	//console.log('s2:' + s2);
 	return s1 === s2;
 }
 
