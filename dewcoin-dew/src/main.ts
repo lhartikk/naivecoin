@@ -9,7 +9,7 @@ import {
 } from './blockchain';
 */
 import {
-    Block, generateNextBlock, generatenextBlockWithTransaction, generateRawNextBlock, getAccountBalance,
+    Block, generateNextBlock, mineInCloud, generatenextBlockWithTransaction, generateRawNextBlock, getAccountBalance,
     getBlockchain, getMyAccount, getAccounts, sendTransaction
 } from './blockchain';
 
@@ -139,6 +139,11 @@ const initHttpServer = (myHttpPort: number) => {
         } else {
             res.send(newBlock);
         }
+    });
+
+    app.post('/mineInCloud', (req, res) => {
+        mineInCloud();
+        res.send();
     });
 
     app.get('/mybalance', (req, res) => {

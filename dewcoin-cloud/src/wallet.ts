@@ -28,11 +28,11 @@ const generatePrivateKey = (): string => {
 };
 
 const initWallet = () => {
-    console.log('an account was created.');
     // let's not override existing private keys
     if (existsSync(privateKeyLocation)) {
         if (!existAccount(getPublicFromWallet(), getAccounts())) {
             createAccount(getPublicFromWallet(), getAccounts());
+            console.log('an account was created.');
         }
         return;
     }
@@ -42,6 +42,7 @@ const initWallet = () => {
     console.log('new wallet with private key created to : %s', privateKeyLocation);
     if (!existAccount(getPublicFromWallet(), getAccounts())) {
         createAccount(getPublicFromWallet(), getAccounts());
+        console.log('an account was created.');
     }
 };
 

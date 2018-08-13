@@ -16,6 +16,7 @@ import {getTransactionPool} from './transactionPool';
 
 //dewcoin
 import {getMode, setMode, getCloud} from './config';
+
 let mode: string;
 let wsCloud: WebSocket;
 const getWsCloud = (): WebSocket => wsCloud;
@@ -30,7 +31,8 @@ enum MessageType {
     RESPONSE_TRANSACTION_POOL = 4,
     QUERY_ACCOUNTS = 5,
     RESPONSE_ACCOUNTS = 6,
-    ALTERNATE_ADDRESS = 7
+    ALTERNATE_ADDRESS = 7,
+    MINING_REQUEST = 8
 }
 
 class Message {
@@ -67,7 +69,7 @@ const getSockets = () => sockets;
 
 
 const initConnection = (ws: WebSocket) => {
-    console.log('AAAAAAAAAAinit: ' + ws.url);
+    console.log('A socket is added: ' + ws.url);
     sockets.push(ws);
     initMessageHandler(ws);
     initErrorHandler(ws);
@@ -154,7 +156,7 @@ const initMessageHandler = (ws: WebSocket) => {
                 console.log('could not parse received JSON message: ' + data);
                 return;
             }
-            console.log('[Received message: %s', JSON.stringify(message));
+            console.log('[Received message: %s', data);
             switch (message.type) {
                 case MessageType.QUERY_LATEST:
                     write(ws, responseLatestMsg());
@@ -215,7 +217,7 @@ const initCloudMessageHandler = (ws: WebSocket) => {
                 console.log('could not parse received JSON message: ' + data);
                 return;
             }
-            console.log('[Received cloud message: %s', JSON.stringify(message));
+            console.log('[Received cloud message: %s', data);
             switch (message.type) {
                 case MessageType.QUERY_LATEST:
                     write(ws, responseLatestMsg());
@@ -327,6 +329,10 @@ const alternateAddressMsg = (address: string): Message => ({
     'data': address
 });
 
+const sendMiningRequest = (newBlock: Block) => (
+    write(wsCloud, {'type': MessageType.MINING_REQUEST, 'data': JSON.stringify(newBlock)})
+);
+
 
 const initErrorHandler = (ws: WebSocket) => {
     const closeConnection = (myWs: WebSocket) => {
@@ -419,12 +425,9 @@ const setModeDew = () => {
 	wsCloud = new WebSocket('ws://' + getCloud());
     	wsCloud.on('open', () => {
         	console.log('connection with the cloud established');
-    		//sockets.push(wsCloud);
     		initCloudMessageHandler(wsCloud);
            resetBlockchain();
 
-    		//write(wsCloud, {'type': 5, 'data': null});
-		//broadcast(queryChainLengthMsg());
     		write(wsCloud, queryChainLengthMsg());
     		//query transactions pool only some time after chain query
     		setTimeout(() => {
@@ -444,4 +447,4 @@ const setModeDew = () => {
 
 //export {connectToPeers, broadcastLatest, broadCastTransactionPool, initP2PServer, getSockets};
 export {connectToPeers, broadcastLatest, broadCastTransactionPool, initP2PServer, getSockets, 
-setModeLocal, setModeDew, fetchAccounts};
+setModeLocal, setModeDew, fetchAccounts, sendMiningRequest};

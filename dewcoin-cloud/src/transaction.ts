@@ -167,8 +167,6 @@ const validateTransaction = (transaction: Transaction, aUnspentTxOuts: UnspentTx
 };
 */
 const existAccount = (address: string, accounts: Account[]): boolean => {
-    //console.log('address: ' + address);
-    //console.log('accounts: '+ JSON.stringify(accounts));
     return _(accounts).map((acc: Account) => acc.address).includes(address);
 }
 const createAccount = (address: string, accounts: Account[]): boolean => {
@@ -693,25 +691,3 @@ export {
     Account, findAccount, existAccount, createAccount, verifyAccounts, getCoinbaseTransaction, getPublicKey, hasDuplicates,
     Transaction
 };
-//
-//
-//Transaction
-//UnspentTxOut => Account
-//-TxIn
-//-TxOut
-//
-//signTxIn = (transaction: Transaction, txInIndex: number,
-//                  privateKey: string, aUnspentTxOuts: UnspentTxOut[]): string => {
-//signTransaction = (transaction: Transaction, privateKey: string): string => {
-//
-//processTransactions = (aTransactions: Transaction[], aUnspentTxOuts: UnspentTxOut[], blockIndex: number)
-//processTransactions = (aTransactions: Transaction[], accounts: Account[])
-//
-//validateTransaction = (transaction: Transaction, aUnspentTxOuts: UnspentTxOut[]): boolean
-//validateTransaction = (transaction: Transaction, accounts: Account[]): boolean
-//
-//getCoinbaseTransaction = (address: string, blockIndex: number): Transaction
-//getCoinbaseTransaction = (miner: string): Transaction
-//
-//hasDuplicates = (txIns: TxIn[]): boolean
-//hasDuplicates = (nums: number[]): boolean

@@ -8,7 +8,7 @@ import {
 */
 import {
     addBlockToChain, Block, getBlockchain, getLatestBlock, handleReceivedTransaction, validateAccount, isValidBlockStructure,
-    replaceChain, setAccounts, getAccounts
+    replaceChain, setAccounts, getAccounts, findBlock
 } from './blockchain';
 //import {Transaction} from './transaction';
 import {Transaction, Account, verifyAccounts} from './transaction';
@@ -32,7 +32,8 @@ enum MessageType {
     RESPONSE_TRANSACTION_POOL = 4,
     QUERY_ACCOUNTS = 5,
     RESPONSE_ACCOUNTS = 6,
-    ALTERNATE_ADDRESS = 7
+    ALTERNATE_ADDRESS = 7,
+    MINING_REQUEST = 8
 }
 
 class Message {
@@ -56,7 +57,7 @@ const initP2PServer = (p2pPort: number) => {
         console.log('New websocket connection from %s:%d', req.connection.remoteAddress.substring(7), req.connection.remotePort);
         const dew: string = getDew();
         const address: string = dew.substring(0, dew.search(':'));
-        console.log('Address: %s', address);
+        //console.log('Address: %s', address);
         if(req.connection.remoteAddress.substring(7) == address){
             initCloudConnection(ws);
         }else{
@@ -81,7 +82,7 @@ const initConnection = (ws: WebSocket) => {
 };
 */
 const initConnection = (ws: WebSocket) => {
-    console.log('AAAAAAAAAAinit: ' + ws.url);
+    console.log('A socket is created: ' + ws.url);
     sockets.push(ws);
     initMessageHandler(ws);
     initErrorHandler(ws);
@@ -109,7 +110,6 @@ const initCloudConnection = (ws: WebSocket) => {
     // query transactions pool only some time after chain query
     setTimeout(() => {
         write(wsCloud, queryTransactionPoolMsg());
-        //broadcast(queryTransactionPoolMsg());
     }, 500);
 };
 
@@ -185,7 +185,7 @@ const initMessageHandler = (ws: WebSocket) => {
                 console.log('could not parse received JSON message: ' + data);
                 return;
             }
-            console.log('[Received message: %s', JSON.stringify(message));
+            console.log('[Received message: %s', data);
             switch (message.type) {
                 case MessageType.QUERY_LATEST:
                     write(ws, responseLatestMsg());
@@ -244,7 +244,7 @@ const initCloudMessageHandler = (ws: WebSocket) => {
                 console.log('could not parse received JSON message: ' + data);
                 return;
             }
-            console.log('[Received cloud message: %s', JSON.stringify(message));
+            console.log('[Received cloud message: %s', data);
             switch (message.type) {
                 case MessageType.QUERY_LATEST:
                     write(ws, responseLatestMsg());
@@ -308,6 +308,17 @@ const initCloudMessageHandler = (ws: WebSocket) => {
                         }
                     });
                     setAccounts(receivedAccounts);
+                    break;
+                case MessageType.MINING_REQUEST:
+                    const aBlock: Block = JSONToObject<Block>(message.data);
+                    if (aBlock === null) {
+                        console.log('invalid block received: %s', JSON.stringify(message.data));
+                        break;
+                    }
+    			    const newBlock: Block = findBlock(aBlock.index, aBlock.previousHash, aBlock.timestamp, aBlock.data, aBlock.difficulty);
+    			    if (addBlockToChain(newBlock)) {
+        		        broadcastLatest();
+    			    }
                     break;
             }
         } catch (e) {
