@@ -497,6 +497,7 @@ const updateAccounts = (aTransactions: Transaction[], accounts: Account[]): Acco
 		thSender.timestamp = aTransactions[i].timestamp;
 		thSender.prevBalance = accSender.balance;
 		accSender.balance -= amt;
+		accSender.available = accSender.balance;
 		thSender.afterBalance = accSender.balance;
 		accSender.txHistory = _(accSender.txHistory).filter((th: TxHistory) => {return (th.timestamp < (now + ACCOUNT_PURGE_PERIOD))}).push(thSender).value();
 			//clean txHistory at the same time.
@@ -514,6 +515,7 @@ const updateAccounts = (aTransactions: Transaction[], accounts: Account[]): Acco
 		thReceiver.timestamp = aTransactions[i].timestamp;
 		thReceiver.prevBalance = accReceiver.balance;
 		accReceiver.balance += amt;
+		accReceiver.available = accReceiver.balance;
 		thReceiver.afterBalance = accReceiver.balance;
 		accReceiver.txHistory = _(accReceiver.txHistory).filter((th: TxHistory) => {return (th.timestamp < (now + ACCOUNT_PURGE_PERIOD))}).push(thReceiver).value();
 		//clean txHistory at the same time.

@@ -73,9 +73,6 @@ const initConnection = (ws: WebSocket) => {
     sockets.push(ws);
     initMessageHandler(ws);
     initErrorHandler(ws);
-    if(getMode() == 'dew'){
-        write(ws, alternateAddressMsg(getCloud()));
-    }
     write(ws, queryChainLengthMsg());
 
     // query transactions pool only some time after chain query
@@ -196,7 +193,11 @@ const initMessageHandler = (ws: WebSocket) => {
                     break;
                 case MessageType.ALTERNATE_ADDRESS:
                     console.log('Alternate address received: %s', message.data);
-                    connectToPeers('ws://' + message.data);
+                    if(getMode() == 'dew'){
+                        write(wsCloud, message);
+                    } else {
+                        connectToPeers('ws://' + message.data);
+                    }
                     break;
             }            
         } catch (e) {
@@ -387,9 +388,23 @@ const broadcastLatest = (): void => {
     broadcast(responseLatestMsg());
 };
 
+/*
 const connectToPeers = (newPeer: string): void => {
     const ws: WebSocket = new WebSocket(newPeer);
     ws.on('open', () => {
+        initConnection(ws);
+    });
+    ws.on('error', () => {
+        console.log('connection failed');
+    });
+};
+*/
+const connectToPeers = (newPeer: string): void => {
+    const ws: WebSocket = new WebSocket(newPeer);
+    ws.on('open', () => {
+        if(getMode() == 'dew'){
+            write(ws, alternateAddressMsg(getCloud()));
+        }
         initConnection(ws);
     });
     ws.on('error', () => {

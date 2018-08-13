@@ -19,6 +19,8 @@ dewcoin-cloud/src/config.ts
 
 Detailed configuration guidelines can be found in these files.
 
+Please notice: if only one machine is involved in testing, default config files are OK. If more than one machine is involved, config files should not use localhost or 127.0.0.1 at all.
+
 
 ## Package Installation
 

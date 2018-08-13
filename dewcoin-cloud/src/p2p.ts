@@ -320,6 +320,10 @@ const initCloudMessageHandler = (ws: WebSocket) => {
         		        broadcastLatest();
     			    }
                     break;
+                case MessageType.ALTERNATE_ADDRESS:
+                    console.log('Alternate address received: %s', message.data);
+                    connectToPeers('ws://' + message.data);
+                    break;
             }
         } catch (e) {
             console.log(e);
