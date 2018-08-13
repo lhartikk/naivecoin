@@ -1,8 +1,6 @@
 # Dewcoin 
 
-Dewcoin is a blockchain cryptocurrency system that is based on dew computing principles. The code is pretty detailed but still not detailed enough for immediate production operation. It is basically a Proof of Concept system. 
-
-The mechanism of dewcoin will be introduced separately. Some information about dew computing can be found in: http://www.dewcomputing.org/
+Dewcoin is a blockchain cryptocurrency system that is based on dew computing principles. The code is pretty detailed but still not detailed enough for immediate production operation. It is basically a Proof of Concept system. The mechanism of dewcoin will be introduced separately. Some information about dew computing can be found in: http://www.dewcomputing.org/
 
 Dewcoin is based on Naivecoin. The introduction of Naivecoin can be found in: A tutorial for building a cryptocurrency https://lhartikk.github.io/
 
