@@ -421,7 +421,7 @@ const setModeLocal = () => {
 	setMode('local');
 	mode = getMode();
     	console.log('running on ' + mode + ' mode.');
-
+	connectToPeers('ws://' + getCloud());
 	if (typeof wsCloud !== "undefined") {
 		wsCloud.close();
 	};
