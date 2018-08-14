@@ -1,6 +1,6 @@
-# Dewcoin-cloud Package 
+# Dewblock-cloud Package 
 
-This package has no modes. Dewcoin-cloud behaves like Naivecoin. Especially, it provides the whole blockchain to other nodes to fulfil the responsibility a full blockchain node. It also uses the complete blochchain to garantee the accuracy of all the transactions. 
+This package has no modes. Dewblock-cloud behaves like Naivecoin. Especially, it provides the whole blockchain to other nodes to fulfil the responsibility a full blockchain node. It also uses the complete blochchain to garantee the accuracy of all the transactions. 
 
 
 #### Installation and System Start

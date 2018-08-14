@@ -1,19 +1,19 @@
-# Dewcoin 
+# Dewblock 
 
-Dewcoin is a blockchain cryptocurrency system that is based on dew computing principles. The code is pretty detailed but still not detailed enough for immediate production operation. It is basically a Proof of Concept system. The mechanism of dewcoin will be introduced separately. Some information about dew computing can be found in: http://www.dewcomputing.org/
+Dewblock is a blockchain cryptocurrency system that is based on dew computing principles. The code is pretty detailed but still not detailed enough for immediate production operation. It is basically a Proof of Concept system. The mechanism of dewblock will be introduced separately. Some information about dew computing can be found in: http://www.dewcomputing.org/
 
-Dewcoin is based on Naivecoin. The introduction of Naivecoin can be found in: A tutorial for building a cryptocurrency https://lhartikk.github.io/
+Dewblock is based on Naivecoin. The introduction of Naivecoin can be found in: A tutorial for building a cryptocurrency https://lhartikk.github.io/
 
 
 ## Package Placement
 
-Dewcoin has two components: dewcoin-cloud package and the dewcoin-dew package. Ideally, dewcoin-cloud package should be placed in a computer that is running all the time and has a fixed IP address so that it can be accessed easily; dewcoin-dew package can be placed in a local computer. For testing purposes, dewcoin-cloud package and dewcoin-dew package can be placed in the same computer. 
+Dewblock has two components: dewblock-cloud package and the dewblock-dew package. Ideally, dewblock-cloud package should be placed in a computer that is running all the time and has a fixed IP address so that it can be accessed easily; dewblock-dew package can be placed in a local computer. For testing purposes, dewblock-cloud package and dewblock-dew package can be placed in the same computer. 
 
 ## Package Configuraton
 
 Configuraton files:
-dewcoin-dew/src/config.ts
-dewcoin-cloud/src/config.ts
+dewblock-dew/src/config.ts
+dewblock-cloud/src/config.ts
 
 Detailed configuration guidelines can be found in these files.
 
@@ -32,9 +32,9 @@ Running command:
 ```
 npm start
 ```
-## Dewcoin Operation
+## Dewblock Operation
 
-Dewcoin system can be operated through an API composed of a group of HTTP commands. These commands can be issued through browsers, designed web forms, or HTTP clients such as curl.
+Dewblock system can be operated through an API composed of a group of HTTP commands. These commands can be issued through browsers, designed web forms, or HTTP clients such as curl.
 
-We use curl to describe the API, but it does not mean curl is the only way to operate Dewcoin.
+We use curl to describe the API, but it does not mean curl is the only way to operate Dewblock.
 

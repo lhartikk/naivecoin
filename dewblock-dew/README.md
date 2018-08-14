@@ -1,10 +1,10 @@
-# Dewcoin-dew Package 
+# Dewblock-dew Package 
 
 This package has two modes: local mode and dew mode. 
 
-In local mode, dewcoin behaves like Naivecoin.
+In local mode, dewblock behaves like Naivecoin.
 
-In dew mode, dewcoin behaves like Naivecoin without the blockchain. Thus, dewcoin-dew does not need huge memory like a normal blockchain system. 
+In dew mode, dewblock behaves like Naivecoin without the blockchain. Thus, dewblock-dew does not need huge memory like a normal blockchain system. 
 
 #### Installation and System Start
 
