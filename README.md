@@ -7,17 +7,17 @@ Dewblock is based on Naivecoin. The introduction of Naivecoin can be found in: A
 
 ## Package Placement
 
-Dewblock has two components: dewblock-cloud package and the dewblock-dew package. Ideally, dewblock-cloud package should be placed in a computer that is running all the time and has a fixed IP address so that it can be accessed easily; dewblock-dew package can be placed in a local computer. For testing purposes, dewblock-cloud package and dewblock-dew package can be placed in the same computer. 
+Dewblock has two components: Dewblock-cloud-server package and Dewblock-dew-server package. Ideally, Dewblock-cloud-server package should be deployed in a cloud service or a computer that is running all the time and has a fixed IP address so that it can be accessed easily; Dewblock-dew-server package can be deployed in a local computer, such as a desktop/laptop computer or a mobile device. Dewblock-cloud-server package and Dewblock-dew-server package could be stay in the same computer for testing. Different nodes cannot be deployed into the same computer because each node needs to have its unique IP address.
 
 ## Package Configuraton
 
 Configuraton files:
-dewblock-dew/src/config.ts
-dewblock-cloud/src/config.ts
+Dewblock-dew-server/src/config.ts
+Dewblock-cloud-server/src/config.ts
 
 Detailed configuration guidelines can be found in these files.
 
-Please notice: if only one machine is involved in testing, default config files are OK. If more than one machine is involved, config files should not use localhost or 127.0.0.1 at all.
+Please notice: If more than one machine is involved, config files should use actual IP addresses, not use localhost or 127.0.0.1 at all.
 
 
 ## Package Installation
@@ -37,4 +37,3 @@ npm start
 Dewblock system can be operated through an API composed of a group of HTTP commands. These commands can be issued through browsers, designed web forms, or HTTP clients such as curl.
 
 We use curl to describe the API, but it does not mean curl is the only way to operate Dewblock.
-

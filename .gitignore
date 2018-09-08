@@ -1,10 +1,10 @@
-dewblock-cloud/node_modules
-dewblock-cloud/npm-debug.log
-dewblock-cloud/src/*.js
-dewblock-cloud/src/*.map
-dewblock-dew/node_modules
-dewblock-dew/npm-debug.log
-dewblock-dew/src/*.js
-dewblock-dew/src/*.map
+Dewblock-cloud-server/node_modules
+Dewblock-cloud-server/npm-debug.log
+Dewblock-cloud-server/src/*.js
+Dewblock-cloud-server/src/*.map
+Dewblock-dew-server/node_modules
+Dewblock-dew-server/npm-debug.log
+Dewblock-dew-server/src/*.js
+Dewblock-dew-server/src/*.map
 
 

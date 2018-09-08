@@ -1,10 +1,10 @@
-# Dewblock-dew Package 
+# Dewblock-dew-server Package 
 
-This package has two modes: local mode and dew mode. 
+This package has two modes: local mode and cloud-dew mode (for short from now on we refer it as dew mode). 
 
-In local mode, dewblock behaves like Naivecoin.
+In local mode, Dewblock behaves like Naivecoin.
 
-In dew mode, dewblock behaves like Naivecoin without the blockchain. Thus, dewblock-dew does not need huge memory like a normal blockchain system. 
+In dew mode, Dewblock behaves like Naivecoin without the blockchain. Thus, Dewblock-dew-server does not need huge memory like a normal blockchain system. 
 
 #### Installation and System Start
 
@@ -26,9 +26,9 @@ curl http://localhost:3001/setmodedew
 
 
 ##### Fetch Accounts
-Send dew accounts to the cloud for verification. If consistent, nothing the cloud will do; if not consistent, the cloud accounts will be fetched to the dew and replace the dew accounts.
+Send dew server accounts to the cloud server for verification. If consistent, the cloud server will do nothing; if not consistent, the cloud server accounts will be fetched to the dew server and replace the dew server accounts.
 ```
-curl http://localhost:3001/fetchAccounts
+curl http://localhost:3001/fetchaccounts
 ```
 
 
