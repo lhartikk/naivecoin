@@ -52,4 +52,8 @@ curl http://localhost:3001/peers
 ```
 anson here,  
 Zepei here
+<<<<<<< Updated upstream
 Kit here
+=======
+eric here 
+>>>>>>> Stashed changes
