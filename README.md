@@ -52,3 +52,4 @@ curl http://localhost:3001/peers
 ```
 anson here,  
 Zepei here
+eric here
