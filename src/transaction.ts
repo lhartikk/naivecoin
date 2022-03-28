@@ -288,6 +288,6 @@ const getPublicKey = (privateKey: string): string => {
 // };
 
 export {
-    processTransactions, isValidAddress, validateTransaction,
+    processTransactions, validateTransaction,
     UnspentTxOut, TxIn, TxOut, getCoinbaseTransaction, getPublicKey, Transaction
 };
