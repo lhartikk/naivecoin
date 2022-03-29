@@ -2,7 +2,7 @@ import * as CryptoJS from 'crypto-js';
 import * as _ from 'lodash';
 import {broadcastLatest, broadCastTransactionPool} from './p2p';
 import {
-    getCoinbaseTransaction, isValidAddress, processTransactions, Transaction, UnspentTxOut
+    getCoinbaseTransaction, processTransactions, Transaction, UnspentTxOut
 } from './transaction';
 import {addToTransactionPool, getTransactionPool, updateTransactionPool} from './transactionPool';
 import {hexToBinary} from './util';
@@ -121,9 +121,9 @@ const generateNextBlock = () => {
 };
 
 const generatenextBlockWithTransaction = (receiverAddress: string, amount: number) => {
-    if (!isValidAddress(receiverAddress)) {
-        throw Error('invalid address');
-    }
+    // if (!isValidAddress(receiverAddress)) {
+    //     throw Error('invalid address');
+    // }
     if (typeof amount !== 'number') {
         throw Error('invalid amount');
     }

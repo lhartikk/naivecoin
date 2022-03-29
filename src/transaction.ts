@@ -25,12 +25,6 @@ class TxIn {
     public txOutId: string;
     public txOutIndex: number;
     public signature: string;
-
-    // New added getTxInContent
-    public getTxInContent() {
-        const content = this.txOutId + this.txOutIndex;
-        return content.toString();
-    }
 }
 
 // Changed
@@ -42,12 +36,6 @@ class TxOut {
         this.address = address;
         this.amount = amount;
     }
-
-    //
-    public getTxOutContent() {
-        const content = this.address + this.amount;
-        return content;
-    }
 }
 
 // Changed
@@ -55,29 +43,29 @@ class Transaction {
     public id: string;
     public txIns: TxIn[];
     public txOuts: TxOut[];
-
-    public getTransactionId() {
-        const txIn = this.txIns[this.txOuts.length - 1];
-        const txOut = this.txOuts[this.txOuts.length - 1];
-        let txInStr = '';
-        if (txIn != null) {
-            txInStr = txIn.txOutId + txIn.txOutIndex;
-        }
-        const txOutStr = txOut.getTxOutContent();
-        const returnStr = txInStr + txOutStr;
-        return CryptoJS.SHA256(returnStr).toString();   /// First SHA256 Encrypted
-    }
-
-    // New added signTxin
-    // Changed
-    public signTxIn(index: number, privateKey: string, aUnspentTxOuts: UnspentTxOut[]) {
-        const txIn = this.txIns[index];
-        const signID = this.id;
-        const key = ec.keyFromPrivate(privateKey, 'hex');
-        const signature: string = toHexString(key.sign(signID).toDER());
-        return signature;
-    }
 }
+
+const getTransactionId = (transaction: Transaction): string => {
+    const txIn = transaction.txIns[this.txOuts.length - 1];
+    const txOut = transaction.txOuts[this.txOuts.length - 1];
+    let txInStr = '';
+    if (txIn != null) {
+        txInStr = txIn.txOutId + txIn.txOutIndex;
+    }
+    const txOutStr = txOut.address + txOut.amount;
+    const returnStr = txInStr + txOutStr;
+    return CryptoJS.SHA256(returnStr).toString();   /// First SHA256 Encrypted
+};
+// New added signTxin
+
+// Changed
+const signTxIn = (index: number, privateKey: string, aUnspentTxOuts: UnspentTxOut[]): string => {
+    const txIn = this.txIns[index];
+    const signID = this.id;
+    const key = ec.keyFromPrivate(privateKey, 'hex');
+    const signature: string = toHexString(key.sign(signID).toDER());
+    return signature;
+};
 
 // Changed
 const validateTransaction = (transaction: Transaction, aUnspentTxOuts: UnspentTxOut[]): boolean => {
@@ -95,7 +83,7 @@ const validateTransaction = (transaction: Transaction, aUnspentTxOuts: UnspentTx
     }
 
     // Check the transaction ID
-    if (transaction.getTransactionId() !== transaction.id) {
+    if (getTransactionId(transaction) !== transaction.id) {
         console.log('The transaction ID is not vaild: ' + transaction.id);
         return false;
     }
@@ -167,7 +155,7 @@ const getCoinbaseTransaction = (address: string, blockIndex: number): Transactio
 
     transaction.txIns = [txIn];
     transaction.txOuts = [txOut];
-    transaction.id = transaction.getTransactionId();
+    getTransactionId(transaction);
     return transaction;
 };
 
@@ -288,6 +276,6 @@ const getPublicKey = (privateKey: string): string => {
 // };
 
 export {
-    processTransactions, validateTransaction,
+    processTransactions, validateTransaction, getTransactionId, signTxIn,
     UnspentTxOut, TxIn, TxOut, getCoinbaseTransaction, getPublicKey, Transaction
 };
