@@ -1,7 +1,7 @@
 import {ec} from 'elliptic';
 import {existsSync, readFileSync, unlinkSync, writeFileSync} from 'fs';
 import * as _ from 'lodash';
-import {getPublicKey, getTransactionId, Transaction, TxIn, TxOut, UnspentTxOut, signTxIn} from './transaction';
+import {getPublicKey, getTransactionId, signTxIn, Transaction, TxIn, TxOut, UnspentTxOut} from './transaction';
 
 const EC = new ec('secp256k1');
 const privateKeyLocation = process.env.PRIVATE_KEY || 'node/wallet/private_key';
@@ -125,7 +125,7 @@ const createTransaction = (receiverAddress: string, amount: number, privateKey: 
     tx.id = getTransactionId(tx);
 
     tx.txIns = tx.txIns.map((txIn: TxIn, index: number) => {
-        txIn.signature = signTxIn(index, privateKey, unspentTxOuts);
+        txIn.signature = signTxIn(tx, index, privateKey, unspentTxOuts);
         return txIn;
     });
 

@@ -2,7 +2,7 @@ import * as CryptoJS from 'crypto-js';
 import * as _ from 'lodash';
 import {broadcastLatest, broadCastTransactionPool} from './p2p';
 import {
-    getCoinbaseTransaction, processTransactions, Transaction, UnspentTxOut
+    getCoinbaseTransaction, isValidAddress, processTransactions, Transaction, UnspentTxOut
 } from './transaction';
 import {addToTransactionPool, getTransactionPool, updateTransactionPool} from './transactionPool';
 import {hexToBinary} from './util';
@@ -61,15 +61,14 @@ const setUnspentTxOuts = (newUnspentTxOut: UnspentTxOut[]) => {
 const getLatestBlock = (): Block => blockchain[blockchain.length - 1];
 
 // in seconds
-const BLOCK_GENERATION_INTERVAL: number = 5; /** adjust the DIFFICULTY after how many blocks*/
+const BLOCK_GENERATION_INTERVAL: number = 10;
 
 // in blocks
-const DIFFICULTY_ADJUSTMENT_INTERVAL: number = 5; /** adjust the DIFFICULTY after how much time*/
+const DIFFICULTY_ADJUSTMENT_INTERVAL: number = 10;
 
 const getDifficulty = (aBlockchain: Block[]): number => {
-    const latestBlock: Block = aBlockchain[blockchain.length - 1]; /** find out the latest block */
-    const check: number = latestBlock.index % DIFFICULTY_ADJUSTMENT_INTERVAL; /** find out if the block needs to adjust the DIFFICULTY */
-    if (check === 0 && latestBlock.index !== 0) { /** find out if the block needs to adjust the DIFFICULTY */
+    const latestBlock: Block = aBlockchain[blockchain.length - 1];
+    if (latestBlock.index % DIFFICULTY_ADJUSTMENT_INTERVAL === 0 && latestBlock.index !== 0) {
         return getAdjustedDifficulty(latestBlock, aBlockchain);
     } else {
         return latestBlock.difficulty;
@@ -77,22 +76,19 @@ const getDifficulty = (aBlockchain: Block[]): number => {
 };
 
 const getAdjustedDifficulty = (latestBlock: Block, aBlockchain: Block[]) => {
-    const PABlock: Block = aBlockchain[blockchain.length - DIFFICULTY_ADJUSTMENT_INTERVAL]; /** find out which block is adjusted DIFFICULTY before */
-    const take_time: number = latestBlock.timestamp - PABlock.timestamp; /** find out the time between the latest block and the previous adjusted block */
-    const expect_time: number = BLOCK_GENERATION_INTERVAL * DIFFICULTY_ADJUSTMENT_INTERVAL; /** find out the expected time between the latest block and the previous adjusted block */
-    const time_tolerance: number = 3; /** time tolerance between the latest block and the previous adjusted block 3 means 3 times */
-    const expect_time_d: number = expect_time / time_tolerance;
-    const expect_time_m: number = expect_time * time_tolerance;
-    if (take_time < expect_time_d) { /** return difficulty + 1 if smaller than expect_time_d */
-        return PABlock.difficulty + 1;
-    } else if (take_time > expect_time_m) { /** return difficulty - 1 if greater than expect_time_m */
-        return PABlock.difficulty - 1;
+    const prevAdjustmentBlock: Block = aBlockchain[blockchain.length - DIFFICULTY_ADJUSTMENT_INTERVAL];
+    const timeExpected: number = BLOCK_GENERATION_INTERVAL * DIFFICULTY_ADJUSTMENT_INTERVAL;
+    const timeTaken: number = latestBlock.timestamp - prevAdjustmentBlock.timestamp;
+    if (timeTaken < timeExpected / 2) {
+        return prevAdjustmentBlock.difficulty + 1;
+    } else if (timeTaken > timeExpected * 2) {
+        return prevAdjustmentBlock.difficulty - 1;
     } else {
-        return PABlock.difficulty;
+        return prevAdjustmentBlock.difficulty;
     }
 };
 
-const getCurrentTimestamp = (): number => Math.round(new Date().getTime() / 1000); /** return current time */
+const getCurrentTimestamp = (): number => Math.round(new Date().getTime() / 1000);
 
 const generateRawNextBlock = (blockData: Transaction[]) => {
     const previousBlock: Block = getLatestBlock();
@@ -121,9 +117,9 @@ const generateNextBlock = () => {
 };
 
 const generatenextBlockWithTransaction = (receiverAddress: string, amount: number) => {
-    // if (!isValidAddress(receiverAddress)) {
-    //     throw Error('invalid address');
-    // }
+    if (!isValidAddress(receiverAddress)) {
+        throw Error('invalid address');
+    }
     if (typeof amount !== 'number') {
         throw Error('invalid amount');
     }
@@ -134,13 +130,13 @@ const generatenextBlockWithTransaction = (receiverAddress: string, amount: numbe
 };
 
 const findBlock = (index: number, previousHash: string, timestamp: number, data: Transaction[], difficulty: number): Block => {
-    let nonce = 0; /** nonce beings with 0  */
+    let nonce = 0;
     while (true) {
-        const hash: string = calculateHash(index, previousHash, timestamp, data, difficulty, nonce); /** calculate the hash until match the difficulty  */
-        if (hashMatchesDifficulty(hash, difficulty)) { /** if match */
-            return new Block(index, hash, previousHash, timestamp, data, difficulty, nonce); /** return a new block  */
+        const hash: string = calculateHash(index, previousHash, timestamp, data, difficulty, nonce);
+        if (hashMatchesDifficulty(hash, difficulty)) {
+            return new Block(index, hash, previousHash, timestamp, data, difficulty, nonce);
         }
-        nonce++;  /** if not match, increase the nonce and find a new hash */
+        nonce++;
     }
 };
 
@@ -197,10 +193,9 @@ const getAccumulatedDifficulty = (aBlockchain: Block[]): number => {
         .reduce((a, b) => a + b);
 };
 
-const isValidTimestamp = (nBlock: Block, pBlock: Block): boolean => {
-    const time_tolerance_second: number = 60; /** setup a reasonable time period  */
-    return ( pBlock.timestamp - time_tolerance_second < nBlock.timestamp ) /** return if the new block time is greater previous block and smaller than current time  */
-        && nBlock.timestamp - time_tolerance_second < getCurrentTimestamp();
+const isValidTimestamp = (newBlock: Block, previousBlock: Block): boolean => {
+    return ( previousBlock.timestamp - 60 < newBlock.timestamp )
+        && newBlock.timestamp - 60 < getCurrentTimestamp();
 };
 
 const hasValidHash = (block: Block): boolean => {
@@ -221,11 +216,10 @@ const hashMatchesBlockContent = (block: Block): boolean => {
     return blockHash === block.hash;
 };
 
-
 const hashMatchesDifficulty = (hash: string, difficulty: number): boolean => {
-    const prefix_required: string = '0'.repeat(difficulty); /** To find out required prefix, if difficulty is 2, the prefix is 00 */
-    const hash_in_Binary: string = hexToBinary(hash); /** covert hash to binary format */
-    return hash_in_Binary.startsWith(prefix_required); /** return the hash has the correct prefix or not */
+    const hashInBinary: string = hexToBinary(hash);
+    const requiredPrefix: string = '0'.repeat(difficulty);
+    return hashInBinary.startsWith(requiredPrefix);
 };
 
 /*
